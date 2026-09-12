@@ -7,5 +7,5 @@ import net.minecraft.world.level.Level
 data class DreamSession(
     val originDimension: ResourceKey<Level>,
     val originPos: BlockPos,
-    val endTick: Int
+    val endTick: Int,
 )

@@ -9,7 +9,6 @@ import net.minecraftforge.event.entity.player.PlayerSleepInBedEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 
 object DreamSleepHandler {
-
     @SubscribeEvent
     fun onPlayerSleep(event: PlayerSleepInBedEvent) {
         val player = event.entity as? ServerPlayer ?: return
@@ -17,14 +16,15 @@ object DreamSleepHandler {
         val dreamLevel = player.server.getLevel(DreamDimensions.DREAM) ?: return
 
         val bedPos = event.pos
-        
+
         val dreamDurationTicks = 20 * 10
 
-        val session = DreamSession(
-            originDimension = player.level().dimension(),
-            originPos = bedPos,
-            endTick = player.server.tickCount + dreamDurationTicks
-        )
+        val session =
+            DreamSession(
+                originDimension = player.level().dimension(),
+                originPos = bedPos,
+                endTick = player.server.tickCount + dreamDurationTicks,
+            )
 
         DreamSessionManager.start(player.uuid, session)
 
@@ -34,11 +34,11 @@ object DreamSleepHandler {
             80.0,
             0.5,
             player.yRot,
-            player.xRot
+            player.xRot,
         )
 
         player.sendSystemMessage(
-            Component.literal("You drift into a dream...")
+            Component.literal("You drift into a dream..."),
         )
     }
 }

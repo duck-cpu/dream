@@ -5,7 +5,6 @@ import net.minecraftforge.event.TickEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 
 object DreamSessionTicker {
-
     @SubscribeEvent
     fun onServerTick(event: TickEvent.ServerTickEvent) {
         if (event.phase != TickEvent.Phase.END) {
@@ -16,16 +15,17 @@ object DreamSessionTicker {
         val currentTick = server.tickCount
 
         for ((playerId, session) in DreamSessionManager.all()) {
-
             if (currentTick < session.endTick) {
                 continue
             }
 
-            val player = server.playerList.getPlayer(playerId)
-                ?: continue
+            val player =
+                server.playerList.getPlayer(playerId)
+                    ?: continue
 
-            val originLevel = server.getLevel(session.originDimension)
-                ?: continue
+            val originLevel =
+                server.getLevel(session.originDimension)
+                    ?: continue
 
             val pos = session.originPos
 
@@ -35,13 +35,13 @@ object DreamSessionTicker {
                 pos.y.toDouble(),
                 pos.z + 0.5,
                 player.yRot,
-                player.xRot
+                player.xRot,
             )
 
             DreamSessionManager.end(playerId)
 
             player.sendSystemMessage(
-                Component.literal("You wake up.")
+                Component.literal("You wake up."),
             )
         }
     }
