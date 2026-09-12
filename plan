@@ -1,0 +1,15 @@
+SPRINT 1
+
+Launch Minecraft
+↓
+Place a bed
+↓
+Trigger dream entry
+↓
+Teleport player into a custom Dream dimension
+↓
+Wait for a configurable timer
+↓
+Teleport player back to the exact bed they slept in
+↓
+Do this safely without crashing or losing player state
