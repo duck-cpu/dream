@@ -18,7 +18,7 @@ object DreamSessionManager {
         return sessions.remove(playerId)
     }
 
-    fun all(); Map<UUID, DreamSession> {
+    fun all(): Map<UUID, DreamSession> {
         return sessions.toMap()
     }
 }

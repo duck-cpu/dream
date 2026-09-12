@@ -62,7 +62,7 @@ object DreamCommands {
 
         return 1
     }
-     private fun exitDream(player: ServerPlayer): Int {
+    private fun exitDream(player: ServerPlayer): Int {
         val overworld = player.server.overworld()
 
         player.teleportTo(

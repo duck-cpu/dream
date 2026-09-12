@@ -17,6 +17,8 @@ object DreamSleepHandler {
         val dreamLevel = player.server.getLevel(DreamDimensions.DREAM) ?: return
 
         val bedPos = event.pos
+        
+        val dreamDurationTicks = 20 * 10
 
         val session = DreamSession(
             originDimension = player.level().dimension(),
