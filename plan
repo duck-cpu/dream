@@ -429,9 +429,9 @@ If sleep is valid:
 
 Initial Sprint 3 Goals
 ----------------------
-[ ] Define Dream Anchor activation rules
-[ ] Introduce Dream Anchor block/item
-[ ] Register Dream Anchor with Forge
+[x] Define Dream Anchor activation rules
+[x] Introduce Dream Anchor block/item
+[x] Register Dream Anchor with Forge
 [ ] Add basic item/block resources
 [ ] Detect whether a bed has an eligible nearby Dream Anchor
 [ ] Replace temporary DREAM_ACTIVATION_ENABLED boolean
