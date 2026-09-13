@@ -614,9 +614,13 @@ Current Work Order
 [x] Server daylight behavior follows the inverted Dream clock
 [x] Verify daylight-sensitive mobs use Dream daylight correctly
 
-[ ] Create DreamRegion data model
-[ ] Create global DreamWorldSavedData
-[ ] Persist UUID -> DreamRegion assignments
+[x] Create DreamRegion data model
+[x] Create global DreamWorldSavedData
+[x] Persist UUID -> DreamRegion assignments
+[x] Allocate distinct multiplayer regions
+[x] Verify assignment survives Save & Quit
+[x] Verify assignment survives full server restart
+[x] Verify multiple players retain their own region
 [ ] Implement outward-growing / square-spiral region allocation
 [ ] Derive 25 x 25 chunk bounds from grid coordinates
 [ ] Assign and persist a safe personal Dream spawn

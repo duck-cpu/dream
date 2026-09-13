@@ -103,11 +103,30 @@ minecraft {
             property 'forge.enabledGameTestNamespaces', mod_id
         }
 
-        server {
-            property 'forge.enabledGameTestNamespaces', mod_id
-            args '--nogui'
+        clientA {
+            parent runs.client
+
+            workingDirectory project.file('run/clientA')
+
+            args '--username', 'PlayerA'
+        }
+
+        clientB {
+            parent runs.client
+
+            workingDirectory project.file('run/clientB')
+
+            args '--username', 'PlayerB'
         }
         
+        server {
+            workingDirectory project.file('run/server')
+
+            property 'forge.enabledGameTestNamespaces', mod_id
+
+            args '--nogui'
+        }
+
         // This run config launches GameTestServer and runs all registered gametests, then exits.
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
@@ -123,6 +142,10 @@ minecraft {
             args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
         }
     }
+}
+
+tasks.withType(JavaExec).configureEach {
+    standardInput = System.in
 }
 
 mixin {
