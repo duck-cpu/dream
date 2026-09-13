@@ -1,8 +1,8 @@
-SPRINT 1
+SPRINT 1 - does the idea work?
 
 Launch Minecraft
 ↓
-Place a bed
+Place a bed 
 ↓
 Trigger dream entry
 ↓
@@ -13,3 +13,175 @@ Wait for a configurable timer
 Teleport player back to the exact bed they slept in
 ↓
 Do this safely without crashing or losing player state
+
+SPRINT 1 — COMPLETE
+
+Goal
+----
+Prove the minimum viable Dream lifecycle:
+
+Player sleeps
+→ Dream session is created
+→ Player enters custom Dream dimension
+→ Session timer expires
+→ Player returns to original location
+
+Completed
+---------
+- Forge/Kotlin mod loads successfully
+- Custom dream:dream dimension exists
+- Sleeping in a bed triggers Dream entry
+- DreamSession stores:
+    - player UUID association
+    - origin dimension
+    - origin position
+    - session end tick
+- Server tick handler monitors active Dream sessions
+- Player automatically wakes after session expiration
+- Player returns to stored Overworld bed position
+- Basic /dream enter and /dream exit debug commands exist
+- Tested successfully in integrated server
+
+Current Prototype Behavior
+--------------------------
+- Dream duration is currently 10 seconds / 200 ticks
+- Dream dimension is currently a flat test world
+- Dream entry currently teleports player to fixed coordinates:
+    x = 0.5
+    y = 80
+    z = 0.5
+- Return position is stored as BlockPos
+- Dream sessions are stored in memory only
+- Session state is keyed by player UUID
+
+Observed During Testing
+-----------------------
+- Bed event successfully triggers before normal sleep completes
+- Cross-dimensional teleport works
+- Server-tick-based timer works correctly
+- Automatic return to the origin dimension works
+- Dream sessions can be created and removed without crashing
+- Hardcoded Y=80 causes the player to fall into the Dream world
+- Beds currently still function inside dream:dream
+- Sleeping in a Dream bed can start another Dream session and overwrite
+  the original session state
+
+Known Issues / Technical Debt
+-----------------------------
+1. Dream entry logic is duplicated between:
+   - DreamSleepHandler
+   - DreamCommands
+
+2. Wake logic is duplicated / inconsistent between:
+   - DreamSessionTicker
+   - /dream exit
+
+3. /dream enter currently does not use the same lifecycle as normal
+   bed-triggered Dream entry.
+
+4. /dream exit currently uses the old hardcoded Overworld teleport.
+
+5. Dream duration is hardcoded.
+
+6. Dream beds need to be disabled gracefully.
+   Do NOT use a dimension type where bed_works=false unless exploding
+   beds are desired.
+
+7. Return position is only a BlockPos.
+   Eventually preserve:
+   - exact X/Y/Z
+   - yaw
+   - pitch
+   - bed position / safe wake position
+
+8. Sessions are lost on:
+   - server shutdown
+   - game restart
+   - potentially player disconnect
+
+9. No protection currently exists against beginning a second Dream
+   session while one is already active.
+
+10. Dream spawn positioning is temporary and unsafe.
+
+Decisions Made
+--------------
+- Dream duration is independent of Overworld dayTime.
+- Dream sessions are tracked per player rather than globally.
+- Server-side logic owns Dream lifecycle and teleportation.
+- /dream commands should remain as development/debug tools.
+- Dream activation should eventually be optional rather than replacing
+  normal Minecraft sleeping unconditionally.
+- "Dream Anchor" is the generic working name for the eventual opt-in
+  mechanism so the actual block/item design can change later.
+
+Future Design Considerations
+----------------------------
+- Multiplayer:
+    - What counts as sleeping while a player is Dreaming?
+    - Can other players skip the night while someone is Dreaming?
+    - Should Dreamers remain in Dream if morning arrives?
+    - How should sleep percentage gamerules interact with Dreaming?
+
+- Dream activation:
+    - Nearby Dream Anchor?
+    - Item?
+    - Block beside bed?
+    - Configurable opt-in?
+    - Normal sleep must remain available.
+
+- Dream world generation:
+    - Player-specific instances
+    - Procedural dungeon
+    - Tartarus-style vertical progression
+    - Shared vs private Dream spaces
+    - How dimensions/instances are cleaned up
+
+- Progression:
+    - Dream-exclusive loot
+    - Depth-based rewards
+    - Increasing enemy difficulty
+    - Apotheosis integration
+    - Eventually allow limited item transfer between Dream and Overworld
+
+- Failure states:
+    - player death in Dream
+    - disconnect while Dreaming
+    - server restart while Dreaming
+    - bed destroyed while Dreaming
+    - origin chunk unloaded
+    - origin dimension unavailable
+    - Dream dimension unavailable
+    - player attempts to sleep while already Dreaming
+
+- Configuration:
+    - Dream duration
+    - activation requirements
+    - whether inventory transfers
+    - multiplayer behavior
+    - difficulty/reward scaling
+
+    NEXT SPRINT CANDIDATES
+----------------------
+- Centralize Dream enter/wake lifecycle
+- Make debug commands use the same lifecycle
+- Prevent nested Dream sessions
+- Prevent sleeping inside the Dream
+- Replace hardcoded Dream spawn position
+- Decide Dream activation / opt-in behavior
+
+SPRINT 2 — DREAM LIFECYCLE HARDENING - Turn the Sprint 1 prototype into a reliable Dream lifecycle that
+all entry and exit mechanisms use consistently.
+
+Definition of Done
+------------------
+- One shared function/service handles Dream entry - COMPLETE
+- One shared function/service handles waking - COMPLETE
+- Bed sleeping and debug commands use the shared lifecycle
+- A player cannot start a second Dream while already Dreaming
+- Beds cannot trigger another Dream while inside dream:dream
+- Dream entry uses a safe spawn position
+- Wake-up returns the player reliably to their stored origin
+- Manual /dream exit and timed wake behave identically
+- Existing Sprint 1 functionality still works
+- No crashes during normal enter/wake flow

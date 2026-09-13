@@ -1,9 +1,7 @@
 package dev.yen.dream.command
 
 import com.mojang.brigadier.CommandDispatcher
-import dev.yen.dream.session.DreamSession
-import dev.yen.dream.session.DreamSessionManager
-import dev.yen.dream.world.DreamDimensions
+import dev.yen.dream.service.DreamService
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
@@ -38,48 +36,19 @@ object DreamCommands {
     }
 
     private fun enterDream(player: ServerPlayer): Int {
-        val dreamLevel = player.server.getLevel(DreamDimensions.DREAM)
-
-        if (dreamLevel == null) {
-            player.sendSystemMessage(
-                Component.literal("Dream dimension could not be found."),
+        val success =
+            DreamService.enterDream(
+                player,
+                player.blockPosition(),
             )
 
-            return 0
+        return if (success) 1 else 0
+    }
+
+    private fun exitDream(player: ServerPlayer): Int =
+        if (DreamService.wakeFromDream(player)) {
+            1
+        } else {
+            0
         }
-
-        player.teleportTo(
-            dreamLevel,
-            0.5,
-            80.0,
-            0.5,
-            player.yRot,
-            player.xRot,
-        )
-
-        player.sendSystemMessage(
-            Component.literal("You enter the dream..."),
-        )
-
-        return 1
-    }
-
-    private fun exitDream(player: ServerPlayer): Int {
-        val overworld = player.server.overworld()
-
-        player.teleportTo(
-            overworld,
-            0.5,
-            100.0,
-            0.5,
-            player.yRot,
-            player.xRot,
-        )
-
-        player.sendSystemMessage(
-            Component.literal("You wake up."),
-        )
-
-        return 1
-    }
 }
