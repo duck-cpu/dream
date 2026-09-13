@@ -70,11 +70,15 @@ Known Issues / Technical Debt
 -----------------------------
 1. Dream entry logic is duplicated between:
    - DreamSleepHandler
-   - DreamCommands
+   - DreamCommands 
+
+FIXED - Sprint 2
 
 2. Wake logic is duplicated / inconsistent between:
    - DreamSessionTicker
    - /dream exit
+
+FIXED - Sprint 2
 
 3. /dream enter currently does not use the same lifecycle as normal
    bed-triggered Dream entry.
@@ -173,15 +177,52 @@ Future Design Considerations
 SPRINT 2 — DREAM LIFECYCLE HARDENING - Turn the Sprint 1 prototype into a reliable Dream lifecycle that
 all entry and exit mechanisms use consistently.
 
+NO DREAM ANCHOR ACTIVE
+----------------------
+Player uses bed
+↓
+Dream mod does nothing
+↓
+100% vanilla sleep behavior
+
+
+DREAM ANCHOR ACTIVE
+-------------------
+Player uses bed
+↓
+Vanilla decides whether sleeping is allowed
+↓
+If vanilla rejects sleep:
+    Dream does not start
+
+If vanilla accepts sleep:
+    Dream intercepts the successful sleep
+    ↓
+    DreamService.enterDream(...)
+    ↓
+    Player is no longer treated as a normal sleeper
+
 Definition of Done
 ------------------
+
 - One shared function/service handles Dream entry - COMPLETE
 - One shared function/service handles waking - COMPLETE
-- Bed sleeping and debug commands use the shared lifecycle
-- A player cannot start a second Dream while already Dreaming
-- Beds cannot trigger another Dream while inside dream:dream
+- Bed sleeping and debug commands use the shared Dream lifecycle - COMPLETE
+- A player cannot start a second Dream while already Dreaming - COMPLETE
+- Beds cannot trigger another Dream while inside dream:dream - COMPLETE
+- Beds cannot be usable inside a dream. - COMPLETE
 - Dream entry uses a safe spawn position
 - Wake-up returns the player reliably to their stored origin
-- Manual /dream exit and timed wake behave identically
+- Manual /dream exit and timed wake behave identically - COMPLETE
+
+- Vanilla sleep behavior is preserved when Dream activation is inactive
+- Dream entry only occurs when vanilla would normally allow the player to sleep
+- Daytime sleep attempts do not trigger a Dream
+- Sleep attempts blocked by vanilla conditions do not trigger a Dream
+- Entering a Dream stops the player from being treated as a normal sleeping player
+- Dreaming does not accidentally trigger or interfere with vanilla night skipping
+- Normal players can still use vanilla sleeping mechanics without interference
+
 - Existing Sprint 1 functionality still works
-- No crashes during normal enter/wake flow
+- No crashes during normal enter / wake flow
+- No crashes during invalid or blocked sleep attempts

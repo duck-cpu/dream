@@ -14,10 +14,18 @@ object DreamService {
         player: ServerPlayer,
         originPos: BlockPos,
     ): Boolean {
+        if (DreamSessionManager.has(player.uuid)) {
+            player.sendSystemMessage(
+                Component.literal("You are already dreaming."),
+            )
+            return false
+        }
+
         val dreamLevel =
             player.server.getLevel(DreamDimensions.DREAM)
                 ?: return false
 
+        // existing session creation + teleport...
         val session =
             DreamSession(
                 originDimension = player.level().dimension(),

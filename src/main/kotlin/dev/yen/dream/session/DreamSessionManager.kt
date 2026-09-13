@@ -14,6 +14,8 @@ object DreamSessionManager {
 
     fun get(playerId: UUID): DreamSession? = sessions[playerId]
 
+    fun has(playerId: UUID): Boolean = sessions.containsKey(playerId)
+
     fun end(playerId: UUID): DreamSession? = sessions.remove(playerId)
 
     fun all(): Map<UUID, DreamSession> = sessions.toMap()
