@@ -153,8 +153,13 @@ Session Persistence
 
 Current Timer Behavior
 ----------------------
-Dream duration:
-    10 seconds / 200 ticks
+Current development Dream duration:
+    20,000 ticks
+    1,000 seconds
+    approximately 16 minutes 40 seconds
+
+This value is currently hardcoded and is a development/testing value,
+not the final gameplay duration.
 
 Current offline behavior:
     Dream time pauses while the player/server is offline.
@@ -346,8 +351,8 @@ Future handling may be required for:
 
 
 
-FUTURE DESIGN CONSIDERATIONS
-============================
+DESIGN / FUTURE CONSIDERATIONS
+==============================
 
 Same-Night Dream Re-entry
 -------------------------
@@ -365,15 +370,19 @@ night-progression behavior.
 
 Night Progression
 -----------------
-Eventually determine how Dream completion interacts with Minecraft time.
+Current behavior:
 
-Questions include:
+- Dream time is always reported 12,000 ticks opposite the Overworld
+- If another player sleeps and advances Overworld time, Dream time
+  advances to the corresponding opposite point
+- A DreamSession timer is independent of the world day/night clock
+- Dreamers remain in the Dream until their own session ends
 
-- Should completing a Dream skip the night?
-- Should waking advance time?
-- What happens if another player sleeps while someone is Dreaming?
-- What happens if morning arrives naturally?
-- Should Dreamers remain inside the Dream after sunrise?
+Future questions:
+
+- Should completing a Dream ever skip the Overworld night?
+- Should waking advance Overworld time?
+- Should natural sunrise end an active Dream?
 - How should playersSleepingPercentage interact with Dreaming?
 
 
@@ -565,7 +574,7 @@ Future handling required for:
 - origin dimension unavailable
 - Dream dimension unavailable
 - invalid/corrupted DreamSession data
-- invalid/corrupted DreamWorldData
+- invalid/corrupted DreamWorldSavedData
 - missing personal Dream region assignment
 - unsafe personal Dream spawn
 
@@ -585,18 +594,347 @@ Eventually configurable:
 
 
 
-SPRINT 4 — GILDED POT + PERSONAL DREAM WORLD
+SPRINT 4 — PERSONAL DREAM WORLD + GILDED POT
 =============================================
-STATUS: NEXT
+STATUS: IN PROGRESS
 
 Goal
 ----
-Turn the current Dream Anchor prototype into the Gilded Pot and replace
-the shared flat test environment with persistent, bounded personal
-Overworld-style Dream regions.
+Build permanent player-owned Dream regions on top of the now-working
+persistent Overworld-style dream:dream dimension, then finish the
+Gilded Pot presentation/storage implementation when its final assets
+are ready.
 
 
-PART 1 — GILDED POT
+Current Work Order
+------------------
+[x] Normal Overworld-style Dream generation
+[x] Distinct deterministic Dream seed
+[x] Dream clock offset 12,000 ticks from the Overworld
+[x] Server daylight behavior follows the inverted Dream clock
+[x] Verify daylight-sensitive mobs use Dream daylight correctly
+
+[ ] Create DreamRegion data model
+[ ] Create global DreamWorldSavedData
+[ ] Persist UUID -> DreamRegion assignments
+[ ] Implement outward-growing / square-spiral region allocation
+[ ] Derive 25 x 25 chunk bounds from grid coordinates
+[ ] Assign and persist a safe personal Dream spawn
+[ ] Replace global X=0 / Z=0 Dream spawn
+[ ] Enforce logical region borders
+[ ] Multiplayer/regression-test region ownership and persistence
+[ ] Finish Gilded Pot once final model/assets are ready
+
+
+PART 1 — PERSONAL DREAM WORLD
+=============================
+
+Goal
+----
+Partition the existing persistent shared Dream dimension into permanent,
+player-owned regions arranged in a contiguous multiplayer grid.
+
+
+Core Design
+-----------
+The mod continues to use one persistent dimension:
+
+    dream:dream
+
+Players do NOT receive separate ServerLevel instances.
+
+Instead, each player owns one permanent region inside the shared
+Dream dimension.
+
+Region size for Sprint 4:
+
+    25 x 25 chunks
+    400 x 400 blocks
+
+The region size remains a fixed implementation constant during Sprint 4.
+Do not make it configurable yet; changing region size after assignments
+exist requires migration semantics.
+
+Regions directly border one another so terrain remains continuous across
+ownership boundaries.
+
+
+Target Flow
+-----------
+
+Player enters Dream
+↓
+Load DreamWorldSavedData from dream:dream
+↓
+Look up UUID -> DreamRegion
+↓
+If player has no region:
+    allocate next unused grid cell
+    ↓
+    create DreamRegion(gridX, gridZ)
+    ↓
+    derive region chunk/block bounds
+    ↓
+    resolve a safe spawn near the region center
+    ↓
+    persist assignment and spawn
+↓
+If player already owns a region:
+    reuse the existing DreamRegion and spawn
+↓
+Teleport player to personal Dream spawn
+↓
+Player explores/builds/modifies persistent terrain
+↓
+Logical border rules prevent unauthorized region crossing
+↓
+Dream timer expires
+↓
+Existing wake lifecycle returns player to the Overworld
+↓
+Dream terrain and region ownership remain unchanged for the next visit
+
+
+Dream Dimension Foundation
+--------------------------
+[x] Replace flat Dream generator with normal Overworld-style generation
+[x] Preserve custom dream:dream dimension type
+[x] Preserve bed_works=false
+[x] Generate normal Overworld terrain
+[x] Generate normal biomes
+[x] Generate caves
+[x] Generate ores
+[x] Give dream:dream a deterministic seed distinct from the Overworld
+[x] Offset Dream time by 12,000 ticks from the Overworld
+[x] Make server daylight behavior follow the inverted Dream clock
+[x] Verify daylight-sensitive mobs behave correctly
+[x] Verify terrain persists between Dream visits
+[x] Verify terrain naturally continues across future player borders
+
+
+DreamRegion
+-----------
+DreamRegion is the permanent value object describing one player's
+territory.
+
+The UUID association is stored by DreamWorldSavedData as the map key,
+so DreamRegion does not need to redundantly store the UUID itself.
+
+Persisted fields:
+
+[ ] gridX
+[ ] gridZ
+[ ] personal Dream spawn position
+
+Derived fields / helper values:
+
+[ ] minimum chunk X
+[ ] maximum chunk X
+[ ] minimum chunk Z
+[ ] maximum chunk Z
+[ ] minimum block X
+[ ] maximum block X
+[ ] minimum block Z
+[ ] maximum block Z
+[ ] region center coordinates
+
+Bounds must be derived from grid coordinates and the fixed region size,
+not separately persisted.
+
+Required formulas:
+
+    REGION_SIZE_CHUNKS = 25
+    REGION_SIZE_BLOCKS = 400
+
+    minChunkX = gridX * REGION_SIZE_CHUNKS
+    maxChunkX = minChunkX + REGION_SIZE_CHUNKS - 1
+
+    minChunkZ = gridZ * REGION_SIZE_CHUNKS
+    maxChunkZ = minChunkZ + REGION_SIZE_CHUNKS - 1
+
+    minBlockX = minChunkX * 16
+    maxBlockX = ((maxChunkX + 1) * 16) - 1
+
+    minBlockZ = minChunkZ * 16
+    maxBlockZ = ((maxChunkZ + 1) * 16) - 1
+
+These formulas must work identically for positive and negative grid
+coordinates.
+
+
+DreamWorldSavedData
+-------------------
+Create one global SavedData object for Dream region ownership.
+
+Purpose:
+
+    UUID -> DreamRegion
+
+DreamWorldSavedData is separate from DreamSession:
+
+DreamSession:
+    temporary information about one current Dream visit
+
+DreamWorldSavedData:
+    permanent ownership/spawn information for the shared Dream world
+
+Planned behavior:
+
+[ ] Store one UUID -> DreamRegion mapping
+[ ] Load/save through Minecraft SavedData
+[ ] Attach the data to the dream:dream level's DataStorage
+[ ] Mark data dirty only when assignments/spawns change
+[ ] Persist independently of active DreamSession state
+[ ] Include a small data/schema version for future migrations
+[ ] Reuse the same assignment forever unless explicitly migrated/reset
+
+Do NOT persist a separate occupied-cell list unless it becomes necessary.
+Occupied cells can be derived from the current UUID -> DreamRegion map,
+which avoids duplicate persistent state.
+
+
+Region Allocation
+-----------------
+New players receive the next unused grid cell in an outward-growing
+square spiral centered at (0, 0).
+
+Expected early allocation order:
+
+    1:  ( 0,  0)
+    2:  ( 1,  0)
+    3:  ( 1,  1)
+    4:  ( 0,  1)
+    5:  (-1,  1)
+    6:  (-1,  0)
+    7:  (-1, -1)
+    8:  ( 0, -1)
+    9:  ( 1, -1)
+    10: ( 2, -1)
+    ...
+
+Requirements:
+
+[ ] First player receives grid (0, 0)
+[ ] Allocate new regions without overlap
+[ ] Allocation grows outward instead of only along one axis
+[ ] Reuse an existing player's region permanently
+[ ] Neighboring cells directly share borders
+[ ] Allocation remains correct with missing/deleted player accounts
+[ ] Assignment survives Save & Quit
+[ ] Assignment survives full server restart
+
+
+Personal Dream Spawn
+--------------------
+Initial spawn should be resolved inside the player's own region, near
+the region center.
+
+First-pass approach:
+
+[ ] Calculate center X/Z from DreamRegion
+[ ] Use terrain height information to find the surface
+[ ] Require a solid floor and enough air for the player
+[ ] Avoid obvious fluid/lava hazards
+[ ] Persist the resolved BlockPos
+[ ] Reuse the persisted spawn on future visits
+[ ] Stop using global X=0 / Z=0
+[ ] Never place a player's spawn outside their own region
+
+Later hardening may revalidate/recover a spawn if terrain modification
+makes the saved position unsafe.
+
+
+Dream Boundaries
+----------------
+Ownership boundaries are gameplay rules, not terrain seams.
+
+[ ] Detect when a Dreaming player leaves their assigned block bounds
+[ ] Prevent unauthorized movement into another region
+[ ] Correctly handle all four edges and corners
+[ ] Avoid permanent bedrock/barrier walls
+[ ] Keep authorization logic separate from raw coordinate math
+[ ] Keep border behavior extensible for future gates/technology
+
+A later border-access service should be able to answer whether a
+specific crossing/action is authorized rather than hardcoding
+"borders are always closed" throughout unrelated systems.
+
+
+Persistence
+-----------
+[ ] Dream terrain modifications persist
+[ ] Player-built structures persist
+[ ] Containers persist
+[ ] DreamWorldSavedData persists independently of DreamSession
+[ ] Region ownership persists across logout
+[ ] Region ownership persists across Save & Quit
+[ ] Region ownership persists across full server restart
+[ ] Personal Dream spawn persists across full server restart
+
+
+Debug / Validation Support
+--------------------------
+Keep development visibility while the region system is being built.
+
+Recommended temporary/debug support:
+
+[ ] Add `/dream region` or equivalent debug output
+[ ] Print player's gridX/gridZ
+[ ] Print chunk bounds
+[ ] Print block bounds
+[ ] Print stored personal spawn
+
+This makes off-by-one and persistence bugs visible before border
+enforcement is added.
+
+
+Multiplayer Validation
+----------------------
+[ ] Player A receives grid (0, 0)
+[ ] Player B receives the next distinct grid cell
+[ ] Additional players follow the intended spiral order
+[ ] Regions never overlap
+[ ] Adjacent regions have directly touching block bounds
+[ ] Both regions use continuous terrain generation
+[ ] Player A cannot normally enter Player B's region
+[ ] Player B cannot normally enter Player A's region
+[ ] Each player's DreamSession remains independent
+[ ] Each player consistently returns to their own persistent spawn
+[ ] Region assignments remain identical after server restart
+
+
+Regression Testing
+------------------
+[ ] Dream Anchor activation still works during Part 1
+[ ] No Dream Anchor still produces vanilla sleep
+[ ] Vanilla sleep restrictions still work
+[ ] Timed Dream wake still works
+[ ] `/dream enter` still works
+[ ] `/dream exit` still works
+[ ] DreamSession persistence still works
+[ ] Beds still explode inside dream:dream
+[ ] Dream seed remains distinct from Overworld
+[ ] Dream time remains 12,000 ticks opposite Overworld
+[ ] Daylight-sensitive mobs still follow Dream daylight
+[ ] Save & Quit inside the Dream still works
+
+
+Future Border Compatibility
+---------------------------
+Sprint 4 does NOT implement cross-border technology.
+
+However, region/border architecture must avoid preventing later:
+
+- item transfer
+- Forge Energy / RF transfer
+- fluid transfer
+- redstone/signal transfer if desired
+- paired doors/gates
+- controlled player travel
+- neighbor authorization/permissions
+
+
+PART 2 — GILDED POT
 ===================
 
 Goal
@@ -631,179 +969,6 @@ The Gilded Pot serves two purposes:
 
 Dream activation logic should remain separate from the Gilded Pot's
 presentation and storage implementation wherever practical.
-
-
-
-PART 2 — PERSONAL DREAM WORLD
-=============================
-
-Goal
-----
-Replace the flat shared Dream prototype with persistent personal
-Overworld-style Dream regions arranged in a contiguous multiplayer grid.
-
-
-Core Design
------------
-The mod continues to use one persistent dimension:
-
-    dream:dream
-
-Each player receives one persistent personal region inside that
-dimension.
-
-Region size:
-
-    25 x 25 chunks
-    approximately 400 x 400 blocks
-
-Regions directly border one another in a grid.
-
-
-Target Flow
------------
-
-Player enters Dream
-↓
-Look up persistent DreamWorldData
-↓
-If player has no region:
-    allocate unused grid cell
-    ↓
-    determine region chunk/block bounds
-    ↓
-    generate/load normal Overworld terrain
-    ↓
-    determine safe personal Dream spawn
-    ↓
-    persist region assignment and spawn
-
-If player already owns a region:
-    load existing assignment
-↓
-Teleport player to their personal Dream region
-↓
-Player explores/builds/modifies persistent terrain
-↓
-Player is prevented from leaving their current region
-↓
-Dream timer expires
-↓
-Existing wake lifecycle returns player to Overworld
-↓
-Dream terrain remains unchanged for next visit
-
-
-World Generation
-----------------
-[x] Replace flat Dream generator with normal Overworld-style generation
-[x] Preserve custom dream:dream dimension type
-[x] Preserve bed_works=false
-[x] Generate normal Overworld terrain
-[x] Generate normal biomes
-[x] Generate caves
-[x] Generate ores
-[x] Verify terrain persists between Dream visits
-[x] Verify terrain naturally continues across future player borders
-
-DreamWorldData
---------------
-Create persistent world ownership data separate from DreamSession.
-
-DreamSession:
-    temporary information about the player's current Dream visit
-
-DreamWorldData:
-    permanent information about the player's personal Dream territory
-
-Initial DreamWorldData should include at least:
-
-[ ] Player UUID association
-[ ] gridX
-[ ] gridZ
-[ ] region bounds
-[ ] personal Dream spawn position
-
-
-Region Allocation
------------------
-[ ] Define 25 x 25 chunk grid cells
-[ ] Create persistent UUID → grid coordinate mapping
-[ ] Allocate new regions without overlap
-[ ] Prefer outward-growing / spiral allocation
-[ ] Reuse the same region permanently
-[ ] Ensure neighboring grid cells directly border one another
-[ ] Verify assignment survives Save & Quit
-[ ] Verify assignment survives server restart
-
-
-Dream Boundaries
-----------------
-[ ] Calculate region minimum/maximum chunk coordinates
-[ ] Convert region boundaries to block coordinates
-[ ] Detect when a Dreaming player attempts to cross their boundary
-[ ] Prevent unauthorized movement into another player's region
-[ ] Avoid permanent physical barrier walls
-[ ] Keep border enforcement extensible for future technology
-[ ] Verify corners and all four edges behave correctly
-
-
-Personal Dream Spawn
---------------------
-[ ] Determine a safe initial spawn inside each player's region
-[ ] Persist the personal Dream spawn
-[ ] Reuse personal spawn on future visits
-[ ] Stop using the global X=0 / Z=0 prototype spawn
-[ ] Eliminate the existing damaged-global-spawn problem
-[ ] Ensure an unsafe/modified spawn can be recovered later
-
-
-Persistence
------------
-[ ] Dream terrain modifications persist
-[ ] Player-built structures persist
-[ ] Containers persist
-[ ] DreamWorldData persists independently of DreamSession
-[ ] Region ownership persists across logout
-[ ] Region ownership persists across server restart
-
-
-Multiplayer Validation
-----------------------
-[ ] Player A receives one region
-[ ] Player B receives a different neighboring region
-[ ] Regions do not overlap
-[ ] Both regions use continuous terrain generation
-[ ] Player A cannot normally enter Player B's region
-[ ] Player B cannot normally enter Player A's region
-[ ] Each player's DreamSession remains independent
-[ ] Each player consistently returns to their own region
-
-
-Regression Testing
-------------------
-[ ] Gilded Pot activation still works
-[ ] No Gilded Pot still produces vanilla sleep
-[ ] Vanilla sleep restrictions still work
-[ ] Timed Dream wake still works
-[ ] /dream enter still works
-[ ] /dream exit still works
-[ ] DreamSession persistence still works
-[ ] Beds still explode inside dream:dream
-[ ] Save & Quit inside the Dream still works
-
-
-Future Border Compatibility
----------------------------
-Sprint 4 does NOT need to implement cross-border technology.
-
-However, region/border architecture should avoid preventing later:
-
-- item transfer
-- Forge Energy / RF transfer
-- paired doors/gates
-- controlled player travel
-
 
 
 NOT PART OF SPRINT 4
