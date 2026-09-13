@@ -2,6 +2,7 @@ package dev.yen.dream.service
 
 import dev.yen.dream.session.DreamSession
 import dev.yen.dream.session.DreamSessionManager
+import dev.yen.dream.session.DreamSessionPersistence
 import dev.yen.dream.world.DreamDimensions
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
@@ -34,6 +35,11 @@ object DreamService {
             )
 
         DreamSessionManager.start(player.uuid, session)
+
+        DreamSessionPersistence.save(
+            player,
+            session,
+        )
 
         val spawnX = 0
         val spawnZ = 0
@@ -88,6 +94,7 @@ object DreamService {
         )
 
         DreamSessionManager.end(player.uuid)
+        DreamSessionPersistence.clear(player)
 
         player.sendSystemMessage(
             Component.literal("You wake up."),

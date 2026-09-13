@@ -1,6 +1,7 @@
 package dev.yen.dream
 
 import dev.yen.dream.command.DreamCommands
+import dev.yen.dream.event.DreamSessionPersistenceHandler
 import dev.yen.dream.event.DreamSleepHandler
 import dev.yen.dream.session.DreamSessionTicker
 import net.minecraftforge.common.MinecraftForge
@@ -19,5 +20,8 @@ object Dream {
         MinecraftForge.EVENT_BUS.register(DreamCommands)
         MinecraftForge.EVENT_BUS.register(DreamSleepHandler)
         MinecraftForge.EVENT_BUS.register(DreamSessionTicker)
+        MinecraftForge.EVENT_BUS.register(
+            DreamSessionPersistenceHandler,
+        )
     }
 }
