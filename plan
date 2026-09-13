@@ -159,16 +159,6 @@ Dream duration:
 Current offline behavior:
     Dream time pauses while the player/server is offline.
 
-Example:
-
-6 seconds remaining
-↓
-Save & Quit
-↓
-Reload world
-↓
-Approximately 6 seconds remain
-
 Possible future behavior:
     Store an absolute world/server game-time deadline so Dream time
     continues progressing while offline.
@@ -292,20 +282,11 @@ KNOWN ISSUES / TECHNICAL DEBT
 
 Dream Spawn Damage
 ------------------
-Dream spawn currently uses a fixed X/Z location and searches vertically
-for a valid surface.
+Current prototype spawning still depends on finding safe terrain around
+a predetermined Dream location.
 
-If terrain around the spawn is destroyed or heavily modified, such as
-by an exploding bed, a later Dream entry may find an unsafe surface or
-allow the player to fall into the void.
-
-Possible future solutions:
-
-- Search outward for a safe spawn location
-- Protect the Dream entrance area
-- Regenerate the entrance area when needed
-- Spawn players into a generated entrance room
-- Replace the system when procedural Dream generation is implemented
+This will be replaced during Sprint 4 by persistent player-specific
+Dream regions and persistent personal spawn data.
 
 
 Player Death
@@ -396,37 +377,180 @@ Questions include:
 - How should playersSleepingPercentage interact with Dreaming?
 
 
+Personal Dream Worlds
+---------------------
+The Dream is one persistent shared Minecraft dimension:
+
+    dream:dream
+
+Players do not receive separate ServerLevel/dimension instances.
+
+Instead, each player owns one persistent personal region inside the
+shared Dream dimension.
+
+Each region:
+
+- is 25 x 25 chunks
+- is approximately 400 x 400 blocks
+- uses normal Overworld-style world generation
+- persists permanently between Dream visits
+- may be built in and modified by its owner
+- directly borders neighboring player regions
+- is logically inaccessible to other players at the beginning
+
+
+Dream Region Grid
+-----------------
+Personal Dream regions form a contiguous grid.
+
+Example:
+
++---------+---------+---------+
+| Player A| Player B| Player C|
+| 25 x 25 | 25 x 25 | 25 x 25 |
++---------+---------+---------+
+| Player D| Player E| Player F|
+| 25 x 25 | 25 x 25 | 25 x 25 |
++---------+---------+---------+
+| Player G| Player H| Player I|
+| 25 x 25 | 25 x 25 | 25 x 25 |
++---------+---------+---------+
+
+Each player permanently owns a grid coordinate:
+
+    gridX
+    gridZ
+
+Region assignments should remain stable across:
+
+- logout
+- Save & Quit
+- server restart
+- future Dream visits
+
+
+Region Allocation
+-----------------
+New player regions should be allocated outward from the existing
+Dream community rather than extending forever in only one direction.
+
+Preferred approach:
+    outward-growing / spiral grid allocation
+
+This keeps active player regions geographically clustered while
+preserving direct neighboring relationships.
+
+
+Terrain Continuity
+------------------
+All personal regions exist inside the same generated Dream dimension.
+
+This means normal terrain can continue naturally across boundaries:
+
+- rivers may cross between player regions
+- caves may continue beneath borders
+- mountain ranges may span multiple regions
+- biomes may naturally continue across regions
+
+The player ownership boundary is logical rather than a terrain seam.
+
+
+Dream Borders
+-------------
+At the beginning of progression, players cannot cross the boundaries
+of their assigned 25 x 25 chunk Dream region.
+
+Borders should NOT permanently rely on physical bedrock/barrier walls.
+
+Instead, border behavior should remain an abstract gameplay rule so
+future technology can selectively permit interaction between neighbors.
+
+
+Future Border Technology
+------------------------
+As Dream technology progresses, neighboring players may eventually
+connect their regions across shared borders.
+
+Possible future connections include:
+
+- item transfer
+- Forge Energy / RF transfer
+- paired doors or gates
+- authorized player travel
+
+Early game:
+    borders are completely sealed
+
+Later game:
+    specific technologies may permit controlled interaction between
+    neighboring Dream regions.
+
+The physical Dream grid therefore becomes part of multiplayer
+progression rather than only an implementation detail.
+
+
 Multiplayer
 -----------
-- Per-player Dream sessions
-- Other players may remain in the Overworld
-- Determine night-skip behavior
-- Determine whether Dream spaces are private or shared
-- Determine what happens when a Dreamer disconnects
+- Dream sessions remain per-player
+- Each player owns one persistent Dream region
+- Regions directly border other player regions
+- Normal player movement across borders begins disabled
+- Other players may remain in the Overworld while someone Dreams
+- Future technology may connect neighboring Dream regions
+- Determine eventual night-skip behavior
+- Determine what happens when morning arrives during a Dream
 - Determine interaction with sleeping-percentage gamerules
 
 
-Dream World Generation
-----------------------
+Dream Dungeon
+-------------
+The personal Dream world is NOT the procedural dungeon.
+
+The procedural dungeon will be a separate later-game activity accessed
+from inside the player's persistent Dream region.
+
 Long-term direction:
 
-- procedural Dream dungeon
+Personal Dream Region
+↓
+Player discovers or obtains a special Dream-world item
+↓
+Item creates / activates a portal
+↓
+Portal leads to procedural Dream dungeon
+↓
+Dungeon provides dangerous progression-oriented content
+
+Potential dungeon features:
+
+- procedural rooms
 - Tartarus-style vertical/depth progression
-- generated entrance room
-- player-specific Dream instances
-- shared vs private Dream spaces
-- cleanup of generated Dream instances
-- progressively harder encounters
+- encounter rooms
+- loot rooms
+- bosses
+- increasing difficulty
+- Apotheosis integration
+- regenerating or run-based layouts
 
 
 Progression
 -----------
-- Dream-exclusive loot
-- Depth-based rewards
-- Increasing enemy difficulty
+The persistent Dream world provides a foundation for long-term
+technology and progression.
+
+Potential systems include:
+
+- building and developing the personal Dream region
+- Dream-exclusive resources
+- Dream storage and infrastructure
+- technology that transfers limited items to/from the Overworld
+- cross-border item transfer between neighboring Dream regions
+- cross-border Forge Energy / RF networks
+- Dream gates/doors between neighboring players
+- dungeon access technology
+- dungeon-exclusive loot
+- increasing dungeon difficulty
 - Apotheosis integration
-- Separate Dream progression
-- Limited Dream ↔ Overworld item transfer
 
 
 Failure States
@@ -440,8 +564,10 @@ Future handling required for:
 - origin chunk unloaded
 - origin dimension unavailable
 - Dream dimension unavailable
-- damaged Dream spawn
-- invalid/corrupted persisted DreamSession
+- invalid/corrupted DreamSession data
+- invalid/corrupted DreamWorldData
+- missing personal Dream region assignment
+- unsafe personal Dream spawn
 
 
 Configuration
@@ -450,6 +576,7 @@ Eventually configurable:
 
 - Dream duration
 - Dream activation requirements
+- personal Dream region size
 - inventory transfer rules
 - multiplayer behavior
 - difficulty scaling
@@ -458,15 +585,15 @@ Eventually configurable:
 
 
 
-SPRINT 4 — GILDED POT + DREAM WORLD FOUNDATION
-===============================================
+SPRINT 4 — GILDED POT + PERSONAL DREAM WORLD
+=============================================
 STATUS: NEXT
 
 Goal
 ----
-Turn the current Dream Anchor prototype into the first real gameplay
-block and begin replacing the flat test Dream world with an intentional
-Dream-space experience.
+Turn the current Dream Anchor prototype into the Gilded Pot and replace
+the shared flat test environment with persistent, bounded personal
+Overworld-style Dream regions.
 
 
 PART 1 — GILDED POT
@@ -475,6 +602,7 @@ PART 1 — GILDED POT
 Goal
 ----
 Turn the current placeholder Dream Anchor into the Gilded Pot.
+
 
 Planned Work
 ------------
@@ -501,31 +629,35 @@ The Gilded Pot serves two purposes:
 2. Storage block
    - functions as a useful physical object outside the Dream mechanic
 
-The Dream activation system should remain separate from the block's
+Dream activation logic should remain separate from the Gilded Pot's
 presentation and storage implementation wherever practical.
 
 
 
-PART 2 — DREAM WORLD FOUNDATION
-===============================
+PART 2 — PERSONAL DREAM WORLD
+=============================
 
 Goal
 ----
-Replace the fragile flat-world spawn experience with the first
-intentional Dream environment.
+Replace the flat shared Dream prototype with persistent personal
+Overworld-style Dream regions arranged in a contiguous multiplayer grid.
 
 
-Current Problem
----------------
-The player currently enters the Dream around a fixed X/Z location and
-searches vertically for terrain.
+Core Design
+-----------
+The mod continues to use one persistent dimension:
 
-This works for development but can fail if:
+    dream:dream
 
-- the area is destroyed
-- a bed explosion creates a crater
-- terrain is modified
-- the expected surface no longer exists
+Each player receives one persistent personal region inside that
+dimension.
+
+Region size:
+
+    25 x 25 chunks
+    approximately 400 x 400 blocks
+
+Regions directly border one another in a grid.
 
 
 Target Flow
@@ -533,50 +665,161 @@ Target Flow
 
 Player enters Dream
 ↓
-Dream entrance location is prepared
+Look up persistent DreamWorldData
 ↓
-Player spawns in a guaranteed-safe entrance area
+If player has no region:
+    allocate unused grid cell
+    ↓
+    determine region chunk/block bounds
+    ↓
+    generate/load normal Overworld terrain
+    ↓
+    determine safe personal Dream spawn
+    ↓
+    persist region assignment and spawn
+
+If player already owns a region:
+    load existing assignment
 ↓
-Player can explore the first intentional Dream space
+Teleport player to their personal Dream region
+↓
+Player explores/builds/modifies persistent terrain
+↓
+Player is prevented from leaving their current region
 ↓
 Dream timer expires
 ↓
 Existing wake lifecycle returns player to Overworld
+↓
+Dream terrain remains unchanged for next visit
 
 
-Initial Dream World Goals
--------------------------
-[ ] Create first intentional Dream entrance area
-[ ] Guarantee safe Dream spawn
-[ ] Prevent previous terrain damage from breaking future Dream entry
-[ ] Stop depending on arbitrary surface terrain at X=0 / Z=0
-[ ] Establish how Dream rooms/structures will be represented
-[ ] Create first test Dream room
-[ ] Preserve existing Dream lifecycle and persistence
-[ ] Preserve exploding-bed behavior inside dream:dream
-[ ] Regression-test repeated Dream entry after modifying the Dream area
-
-
-Architecture Questions to Answer
---------------------------------
-- Should rooms use Minecraft structures/templates?
-- Should rooms be generated in a fixed grid?
-- How large is a standard Dream room?
-- How are room exits represented?
-- How is the entrance room protected or recreated?
-- How do future rooms connect?
-- How will player-specific Dream layouts eventually work?
-
-
-Not Required Yet
+World Generation
 ----------------
-- Full procedural dungeon generation
+[x] Replace flat Dream generator with normal Overworld-style generation
+[x] Preserve custom dream:dream dimension type
+[x] Preserve bed_works=false
+[x] Generate normal Overworld terrain
+[x] Generate normal biomes
+[x] Generate caves
+[x] Generate ores
+[x] Verify terrain persists between Dream visits
+[x] Verify terrain naturally continues across future player borders
+
+DreamWorldData
+--------------
+Create persistent world ownership data separate from DreamSession.
+
+DreamSession:
+    temporary information about the player's current Dream visit
+
+DreamWorldData:
+    permanent information about the player's personal Dream territory
+
+Initial DreamWorldData should include at least:
+
+[ ] Player UUID association
+[ ] gridX
+[ ] gridZ
+[ ] region bounds
+[ ] personal Dream spawn position
+
+
+Region Allocation
+-----------------
+[ ] Define 25 x 25 chunk grid cells
+[ ] Create persistent UUID → grid coordinate mapping
+[ ] Allocate new regions without overlap
+[ ] Prefer outward-growing / spiral allocation
+[ ] Reuse the same region permanently
+[ ] Ensure neighboring grid cells directly border one another
+[ ] Verify assignment survives Save & Quit
+[ ] Verify assignment survives server restart
+
+
+Dream Boundaries
+----------------
+[ ] Calculate region minimum/maximum chunk coordinates
+[ ] Convert region boundaries to block coordinates
+[ ] Detect when a Dreaming player attempts to cross their boundary
+[ ] Prevent unauthorized movement into another player's region
+[ ] Avoid permanent physical barrier walls
+[ ] Keep border enforcement extensible for future technology
+[ ] Verify corners and all four edges behave correctly
+
+
+Personal Dream Spawn
+--------------------
+[ ] Determine a safe initial spawn inside each player's region
+[ ] Persist the personal Dream spawn
+[ ] Reuse personal spawn on future visits
+[ ] Stop using the global X=0 / Z=0 prototype spawn
+[ ] Eliminate the existing damaged-global-spawn problem
+[ ] Ensure an unsafe/modified spawn can be recovered later
+
+
+Persistence
+-----------
+[ ] Dream terrain modifications persist
+[ ] Player-built structures persist
+[ ] Containers persist
+[ ] DreamWorldData persists independently of DreamSession
+[ ] Region ownership persists across logout
+[ ] Region ownership persists across server restart
+
+
+Multiplayer Validation
+----------------------
+[ ] Player A receives one region
+[ ] Player B receives a different neighboring region
+[ ] Regions do not overlap
+[ ] Both regions use continuous terrain generation
+[ ] Player A cannot normally enter Player B's region
+[ ] Player B cannot normally enter Player A's region
+[ ] Each player's DreamSession remains independent
+[ ] Each player consistently returns to their own region
+
+
+Regression Testing
+------------------
+[ ] Gilded Pot activation still works
+[ ] No Gilded Pot still produces vanilla sleep
+[ ] Vanilla sleep restrictions still work
+[ ] Timed Dream wake still works
+[ ] /dream enter still works
+[ ] /dream exit still works
+[ ] DreamSession persistence still works
+[ ] Beds still explode inside dream:dream
+[ ] Save & Quit inside the Dream still works
+
+
+Future Border Compatibility
+---------------------------
+Sprint 4 does NOT need to implement cross-border technology.
+
+However, region/border architecture should avoid preventing later:
+
+- item transfer
+- Forge Energy / RF transfer
+- paired doors/gates
+- controlled player travel
+
+
+
+NOT PART OF SPRINT 4
+====================
+
+- Procedural Dream dungeon
+- Dungeon portal/item
+- Cross-border item transfer
+- Cross-border RF transfer
+- Cross-border doors
+- Authorized player border travel
+- Dream/Overworld item-transfer technology
 - Endless Tartarus-style floors
 - Final enemy spawning system
 - Final loot system
 - Apotheosis integration
-- Dream-exclusive progression
-- Player-specific dimensions
 - Boss encounters
 - Night-skip behavior
 - Same-night re-entry restriction
@@ -587,15 +830,41 @@ Not Required Yet
 FUTURE SPRINT DIRECTION
 =======================
 
-SPRINT 5 — PROCEDURAL DREAM DUNGEON
+Likely progression:
 
-Likely focus:
+SPRINT 5
+--------
+Personal Dream region hardening / early Dream-world gameplay
 
+Potential focus:
+- resource balance
+- persistent building
+- Dream-specific materials
+- Dream/Overworld progression hooks
+- safer spawn recovery
+- player death behavior
+
+
+LATER SPRINT — BORDER TECHNOLOGY
+--------------------------------
+Potential focus:
+- neighboring region discovery
+- item transfer across borders
+- Forge Energy / RF transfer
+- paired border doors
+- permission/authorization system
+
+
+LATER SPRINT — DREAM DUNGEON
+----------------------------
+Potential focus:
+- dungeon-enabling item
+- portal generation
+- separate procedural dungeon space
 - reusable room templates
 - room connections
-- procedural layout generation
 - depth/floor tracking
 - encounter rooms
 - loot rooms
 - increasing difficulty
-- repeated Dream-run generation
+- repeated dungeon runs

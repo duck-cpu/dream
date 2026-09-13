@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.yen.dream.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "dream.refmap.json",
+  "mixins": [
+    "DreamSeedMixin",
+    "DreamTimeMixin",
+    "DreamSkyBrightnessMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

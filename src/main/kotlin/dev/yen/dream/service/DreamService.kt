@@ -9,7 +9,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 
 object DreamService {
-    private const val DREAM_DURATION_TICKS = 20 * 10
+    private const val DREAM_DURATION_TICKS = 200 * 100
 
     fun enterDream(
         player: ServerPlayer,
