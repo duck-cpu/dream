@@ -2,6 +2,7 @@ package dev.yen.dream.event
 
 import dev.yen.dream.service.DreamService
 import dev.yen.dream.world.DreamDimensions
+import dev.yen.dream.service.DreamActivationService
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.event.TickEvent
@@ -12,7 +13,7 @@ import java.util.UUID
 object DreamSleepHandler {
     // Temporary activation gate.
     // Sprint 3 will replace this with Dream Anchor logic.
-    private const val DREAM_ACTIVATION_ENABLED = false
+    // private const val DREAM_ACTIVATION_ENABLED = false
 
     private val pendingDreams =
         mutableMapOf<UUID, BlockPos>()
@@ -25,7 +26,15 @@ object DreamSleepHandler {
 
         // If Dream activation is disabled, completely ignore sleeping
         // and allow vanilla Minecraft to handle it normally.
-        if (!DREAM_ACTIVATION_ENABLED) {
+        // if (!DREAM_ACTIVATION_ENABLED) {
+        // return
+        // }
+
+        if (!DreamActivationService.isDreamEnabled(
+            player.level(),
+            event.pos,
+            )
+        ) {
             return
         }
 

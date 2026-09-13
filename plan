@@ -138,17 +138,6 @@ Vanilla Sleep Integration
 [x] Vanilla sleeping remains available when Dream activation is disabled
 
 
-Activation Gate
----------------
-[x] Temporary Dream activation boolean exists
-[x] activation = false preserves normal vanilla sleep
-[x] activation = true allows valid vanilla sleep to transition into a Dream
-[x] /dream debug commands remain usable regardless of activation state
-
-The temporary boolean will be replaced by the Dream Anchor system
-during Sprint 3.
-
-
 Session Persistence
 -------------------
 [x] Dream session survives Save & Quit
@@ -195,6 +184,106 @@ Regression Testing
 [x] Vanilla sleeping works normally when Dream activation is disabled
 [x] Dream sleeping works normally when Dream activation is enabled
 [x] Session persistence works across Save & Quit
+
+
+
+SPRINT 3 — DREAM ACTIVATION / DREAM ANCHOR
+==========================================
+STATUS: COMPLETE
+
+Goal
+----
+Replace the temporary global activation boolean with an intentional
+in-world mechanism so individual beds can opt into Dream gameplay
+without replacing normal Minecraft sleeping.
+
+
+Dream Anchor Prototype
+----------------------
+The current Dream Anchor is a custom registered block.
+
+Working presentation:
+    Gilded Pot
+
+Current development appearance:
+    Temporary amethyst-block model/texture
+
+The full Gilded Pot model, collision shape, sounds, storage behavior,
+and final assets are deferred to Sprint 4.
+
+
+Activation Rule
+---------------
+A bed is Dream-enabled when a Dream Anchor exists within 3 blocks
+of the bed.
+
+Dream activation is evaluated around the specific bed being used.
+
+The Anchor:
+- is not consumed
+- does not globally enable Dreaming
+- does not bypass vanilla sleep restrictions
+
+
+NO DREAM ANCHOR
+
+Player uses bed
+↓
+Dream activation check fails
+↓
+Dream mod does nothing
+↓
+Vanilla sleeping proceeds normally
+
+
+VALID DREAM ANCHOR
+
+Player uses bed
+↓
+Dream Anchor exists within activation radius
+↓
+Vanilla validates sleep normally
+↓
+If vanilla rejects sleep:
+    Dream does not start
+
+If vanilla accepts sleep:
+    Player enters valid vanilla sleep
+    ↓
+    Dream mod transitions player into Dream
+    ↓
+    Existing DreamService lifecycle handles entry, timer, persistence,
+    and wake behavior
+
+
+Completed
+---------
+[x] Define Dream Anchor activation rules
+[x] Introduce custom Dream Anchor block/item
+[x] Register Dream Anchor with Forge
+[x] Add basic block/item resources
+[x] Detect whether a bed has an eligible nearby Dream Anchor
+[x] Replace temporary DREAM_ACTIVATION_ENABLED boolean
+[x] No Anchor → completely vanilla sleep
+[x] Valid Anchor → successful vanilla sleep becomes Dream entry
+[x] Anchor activation is evaluated locally around each bed
+[x] Multiple beds behave independently according to Anchor proximity
+[x] Removing/moving the Anchor immediately changes bed behavior
+[x] Anchor is not consumed when entering a Dream
+[x] Vanilla daytime restriction still applies
+[x] Vanilla hostile-mob restriction still applies
+[x] Preserve all Sprint 2 lifecycle behavior
+[x] Regression-test Dream entry, wake, persistence, and normal sleep
+
+
+Deferred From Sprint 3
+----------------------
+- Final Gilded Pot model
+- Custom Gilded Pot collision/selection shape
+- Decorated-pot-style sounds
+- Storage functionality
+- Final Gilded Pot texture
+- Final drops/break behavior
 
 
 
@@ -279,23 +368,6 @@ Future handling may be required for:
 FUTURE DESIGN CONSIDERATIONS
 ============================
 
-Dream Activation
-----------------
-Working concept:
-    Dream Anchor
-
-Possible physical forms:
-
-- dreamcatcher
-- lantern
-- cursed pot
-- plant
-- other thematic block/item
-
-Implementation should remain generic enough that the visual form
-can change later.
-
-
 Same-Night Dream Re-entry
 -------------------------
 Future rule:
@@ -331,7 +403,6 @@ Multiplayer
 - Determine night-skip behavior
 - Determine whether Dream spaces are private or shared
 - Determine what happens when a Dreamer disconnects
-- Determine what happens when the server shuts down
 - Determine interaction with sleeping-percentage gamerules
 
 
@@ -387,68 +458,144 @@ Eventually configurable:
 
 
 
-SPRINT 3 — DREAM ACTIVATION / DREAM ANCHOR
-==========================================
+SPRINT 4 — GILDED POT + DREAM WORLD FOUNDATION
+===============================================
 STATUS: NEXT
 
 Goal
 ----
-Replace the temporary global activation boolean with an intentional,
-in-world mechanism that allows individual beds/players to opt into
-Dream gameplay without replacing normal Minecraft sleeping.
+Turn the current Dream Anchor prototype into the first real gameplay
+block and begin replacing the flat test Dream world with an intentional
+Dream-space experience.
 
 
-Proposed Behavior
------------------
+PART 1 — GILDED POT
+===================
 
-NO DREAM ANCHOR
+Goal
+----
+Turn the current placeholder Dream Anchor into the Gilded Pot.
 
-Player uses bed
+Planned Work
+------------
+[ ] Import final custom Gilded Pot model
+[ ] Add final Gilded Pot texture
+[ ] Define custom block collision/selection shape
+[ ] Add appropriate placement sound
+[ ] Add decorated-pot-style break sound
+[ ] Define breaking behavior
+[ ] Define item drops
+[ ] Add storage functionality
+[ ] Decide initial storage capacity
+[ ] Ensure stored contents behave correctly when the block is broken
+[ ] Preserve existing 3-block Dream activation behavior
+
+
+Design Intent
+-------------
+The Gilded Pot serves two purposes:
+
+1. Dream Anchor
+   - enables Dream entry for nearby beds
+
+2. Storage block
+   - functions as a useful physical object outside the Dream mechanic
+
+The Dream activation system should remain separate from the block's
+presentation and storage implementation wherever practical.
+
+
+
+PART 2 — DREAM WORLD FOUNDATION
+===============================
+
+Goal
+----
+Replace the fragile flat-world spawn experience with the first
+intentional Dream environment.
+
+
+Current Problem
+---------------
+The player currently enters the Dream around a fixed X/Z location and
+searches vertically for terrain.
+
+This works for development but can fail if:
+
+- the area is destroyed
+- a bed explosion creates a crater
+- terrain is modified
+- the expected surface no longer exists
+
+
+Target Flow
+-----------
+
+Player enters Dream
 ↓
-Vanilla sleeping behavior
+Dream entrance location is prepared
 ↓
-Dream mod does nothing
-
-
-VALID DREAM ANCHOR
-
-Player uses bed
+Player spawns in a guaranteed-safe entrance area
 ↓
-Vanilla validates sleep normally
+Player can explore the first intentional Dream space
 ↓
-If sleep is invalid:
-    Dream does not start
-
-If sleep is valid:
-    Dream Anchor condition succeeds
-    ↓
-    Player transitions into Dream
-    ↓
-    Existing DreamService lifecycle handles everything else
+Dream timer expires
+↓
+Existing wake lifecycle returns player to Overworld
 
 
-Initial Sprint 3 Goals
-----------------------
-[x] Define Dream Anchor activation rules
-[x] Introduce Dream Anchor block/item
-[x] Register Dream Anchor with Forge
-[ ] Add basic item/block resources
-[ ] Detect whether a bed has an eligible nearby Dream Anchor
-[ ] Replace temporary DREAM_ACTIVATION_ENABLED boolean
-[ ] No Anchor → completely vanilla sleep
-[ ] Valid Anchor → successful vanilla sleep becomes Dream entry
-[ ] Ensure multiplayer players can independently opt into Dreaming
-[ ] Preserve all Sprint 2 lifecycle behavior
-[ ] Regression-test Dream entry, wake, persistence, and normal sleep
+Initial Dream World Goals
+-------------------------
+[ ] Create first intentional Dream entrance area
+[ ] Guarantee safe Dream spawn
+[ ] Prevent previous terrain damage from breaking future Dream entry
+[ ] Stop depending on arbitrary surface terrain at X=0 / Z=0
+[ ] Establish how Dream rooms/structures will be represented
+[ ] Create first test Dream room
+[ ] Preserve existing Dream lifecycle and persistence
+[ ] Preserve exploding-bed behavior inside dream:dream
+[ ] Regression-test repeated Dream entry after modifying the Dream area
 
 
-Not Part of Sprint 3 Unless Needed
----------------------------------
-- Procedural Dream dungeon generation
-- Dream loot progression
-- Night skipping after Dream completion
-- Same-night Dream re-entry restrictions
-- Player-specific Dream dimensions
+Architecture Questions to Answer
+--------------------------------
+- Should rooms use Minecraft structures/templates?
+- Should rooms be generated in a fixed grid?
+- How large is a standard Dream room?
+- How are room exits represented?
+- How is the entrance room protected or recreated?
+- How do future rooms connect?
+- How will player-specific Dream layouts eventually work?
+
+
+Not Required Yet
+----------------
+- Full procedural dungeon generation
+- Endless Tartarus-style floors
+- Final enemy spawning system
+- Final loot system
+- Apotheosis integration
+- Dream-exclusive progression
+- Player-specific dimensions
+- Boss encounters
+- Night-skip behavior
+- Same-night re-entry restriction
 - Final Dream duration/config system
-- Death handling overhaul
-- Dream/Overworld inventory transfer
+
+
+
+FUTURE SPRINT DIRECTION
+=======================
+
+SPRINT 5 — PROCEDURAL DREAM DUNGEON
+
+Likely focus:
+
+- reusable room templates
+- room connections
+- procedural layout generation
+- depth/floor tracking
+- encounter rooms
+- loot rooms
+- increasing difficulty
+- repeated Dream-run generation
