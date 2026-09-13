@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher
 import dev.yen.dream.service.DreamService
 import dev.yen.dream.world.DreamDimensions
 import dev.yen.dream.world.region.DreamRegionAllocator
+import dev.yen.dream.world.region.DreamRegionService
 import dev.yen.dream.world.region.DreamWorldSavedData
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
@@ -18,9 +19,7 @@ object DreamCommands {
         register(event.dispatcher)
     }
 
-    private fun register(
-        dispatcher: CommandDispatcher<CommandSourceStack>,
-    ) {
+    private fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands
                 .literal("dream")
@@ -47,8 +46,15 @@ object DreamCommands {
                             showRegion(
                                 context.source.playerOrException,
                             )
-                        }
-                        .then(
+                        }.then(
+                            Commands
+                                .literal("spawn")
+                                .executes { context ->
+                                    showSpawn(
+                                        context.source.playerOrException,
+                                    )
+                                },
+                        ).then(
                             Commands
                                 .literal("testspiral")
                                 .executes { context ->
@@ -61,9 +67,7 @@ object DreamCommands {
         )
     }
 
-    private fun enterDream(
-        player: ServerPlayer,
-    ): Int {
+    private fun enterDream(player: ServerPlayer): Int {
         val success =
             DreamService.enterDream(
                 player,
@@ -73,18 +77,14 @@ object DreamCommands {
         return if (success) 1 else 0
     }
 
-    private fun exitDream(
-        player: ServerPlayer,
-    ): Int =
+    private fun exitDream(player: ServerPlayer): Int =
         if (DreamService.wakeFromDream(player)) {
             1
         } else {
             0
         }
 
-    private fun showRegion(
-        player: ServerPlayer,
-    ): Int {
+    private fun showRegion(player: ServerPlayer): Int {
         val dreamLevel =
             player.server.getLevel(
                 DreamDimensions.DREAM,
@@ -103,51 +103,11 @@ object DreamCommands {
             DreamWorldSavedData.get(
                 dreamLevel,
             )
-
-        var region =
-            worldData.getRegion(
-                player.uuid,
+        val region =
+            DreamRegionService.getOrCreateRegion(
+                player,
+                dreamLevel,
             )
-
-        /*
-         * If this player does not already own a Dream region,
-         * ask the square-spiral allocator for the next available cell.
-         *
-         * The assignment is then stored in DreamWorldSavedData so the
-         * same player keeps the same region across future sessions
-         * and server restarts.
-         */
-        if (region == null) {
-            val newRegion =
-                DreamRegionAllocator.nextAvailableRegion(
-                    worldData,
-                )
-
-            val assigned =
-                worldData.assignRegion(
-                    player.uuid,
-                    newRegion,
-                )
-
-            if (!assigned) {
-                player.sendSystemMessage(
-                    Component.literal(
-                        "Failed to assign Dream region.",
-                    ),
-                )
-
-                return 0
-            }
-
-            region = newRegion
-
-            player.sendSystemMessage(
-                Component.literal(
-                    "Assigned new Dream region at " +
-                        "(${region.gridX}, ${region.gridZ}).",
-                ),
-            )
-        }
 
         player.sendSystemMessage(
             Component.literal(
@@ -195,9 +155,50 @@ object DreamCommands {
         return 1
     }
 
-    private fun testSpiral(
-        player: ServerPlayer,
-    ): Int {
+    private fun showSpawn(player: ServerPlayer): Int {
+        val dreamLevel =
+            player.server.getLevel(
+                DreamDimensions.DREAM,
+            )
+                ?: run {
+                    player.sendSystemMessage(
+                        Component.literal(
+                            "Dream dimension is unavailable.",
+                        ),
+                    )
+
+                    return 0
+                }
+
+    /*
+     * This either returns the player's already-persisted spawn
+     * or finds and permanently stores one for the first time.
+     */
+        val spawnPos =
+            DreamRegionService.getOrCreateSpawn(
+                player,
+                dreamLevel,
+            )
+                ?: run {
+                    player.sendSystemMessage(
+                        Component.literal(
+                            "Could not find a safe Dream spawn.",
+                        ),
+                    )
+
+                    return 0
+                }
+
+        player.sendSystemMessage(
+            Component.literal(
+                "Dream spawn: ${spawnPos.toShortString()}",
+            ),
+        )
+
+        return 1
+    }
+
+    private fun testSpiral(player: ServerPlayer): Int {
         val dreamLevel =
             player.server.getLevel(
                 DreamDimensions.DREAM,

@@ -621,10 +621,10 @@ Current Work Order
 [x] Verify assignment survives Save & Quit
 [x] Verify assignment survives full server restart
 [x] Verify multiple players retain their own region
-[ ] Implement outward-growing / square-spiral region allocation
-[ ] Derive 25 x 25 chunk bounds from grid coordinates
-[ ] Assign and persist a safe personal Dream spawn
-[ ] Replace global X=0 / Z=0 Dream spawn
+[x] Implement outward-growing / square-spiral region allocation
+[x] Derive 25 x 25 chunk bounds from grid coordinates
+[x] Assign and persist a safe personal Dream spawn
+[x] Replace global X=0 / Z=0 Dream spawn
 [ ] Enforce logical region borders
 [ ] Multiplayer/regression-test region ownership and persistence
 [ ] Finish Gilded Pot once final model/assets are ready
