@@ -10,6 +10,10 @@ import net.minecraftforge.eventbus.api.SubscribeEvent
 import java.util.UUID
 
 object DreamSleepHandler {
+    // Temporary activation gate.
+    // Sprint 3 will replace this with Dream Anchor logic.
+    private const val DREAM_ACTIVATION_ENABLED = false
+
     private val pendingDreams =
         mutableMapOf<UUID, BlockPos>()
 
@@ -19,7 +23,13 @@ object DreamSleepHandler {
             event.entity as? ServerPlayer
                 ?: return
 
-        // Beds inside the Dream keep their normal "explode" behavior.
+        // If Dream activation is disabled, completely ignore sleeping
+        // and allow vanilla Minecraft to handle it normally.
+        if (!DREAM_ACTIVATION_ENABLED) {
+            return
+        }
+
+        // Beds inside the Dream keep their normal explosion behavior.
         if (player.level().dimension() == DreamDimensions.DREAM) {
             return
         }

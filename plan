@@ -215,7 +215,7 @@ SPRINT 2 — REMAINING WORK
 Immediate
 ---------
 
-[ ] Add temporary Dream activation boolean
+[x] Add temporary Dream activation boolean
 
 Desired behavior:
 
@@ -236,21 +236,21 @@ in a later sprint.
 Final Regression Testing
 ------------------------
 
-[ ] Existing Sprint 1 functionality still works
+[x] Existing Sprint 1 functionality still works
 
-[ ] No crashes during normal Dream entry
+[x] No crashes during normal Dream entry
 
-[ ] No crashes during timed wake
+[x] No crashes during timed wake
 
-[ ] No crashes during /dream exit
+[x] No crashes during /dream exit
 
-[ ] No crashes during invalid/blocked sleep attempts
+[x] No crashes during invalid/blocked sleep attempts
 
-[ ] Vanilla sleeping works normally when Dream activation is disabled
+[x] Vanilla sleeping works normally when Dream activation is disabled
 
-[ ] Dream sleeping works normally when Dream activation is enabled
+[x] Dream sleeping works normally when Dream activation is enabled
 
-[ ] Session persistence works across Save & Quit
+[x] Session persistence works across Save & Quit
 
 
 
