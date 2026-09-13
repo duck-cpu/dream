@@ -35,11 +35,27 @@ object DreamService {
 
         DreamSessionManager.start(player.uuid, session)
 
+        val spawnX = 0
+        val spawnZ = 0
+
+        var spawnY = dreamLevel.maxBuildHeight - 1
+
+        while (spawnY > dreamLevel.minBuildHeight) {
+            val blockPos = BlockPos(spawnX, spawnY, spawnZ)
+
+            if (!dreamLevel.getBlockState(blockPos).isAir) {
+                spawnY += 1
+                break
+            }
+
+            spawnY--
+        }
+
         player.teleportTo(
             dreamLevel,
-            0.5,
-            80.0,
-            0.5,
+            spawnX + 0.5,
+            spawnY.toDouble(),
+            spawnZ + 0.5,
             player.yRot,
             player.xRot,
         )

@@ -61,10 +61,6 @@ Observed During Testing
 - Server-tick-based timer works correctly
 - Automatic return to the origin dimension works
 - Dream sessions can be created and removed without crashing
-- Hardcoded Y=80 causes the player to fall into the Dream world
-- Beds currently still function inside dream:dream
-- Sleeping in a Dream bed can start another Dream session and overwrite
-  the original session state
 
 Known Issues / Technical Debt
 -----------------------------
@@ -83,13 +79,19 @@ FIXED - Sprint 2
 3. /dream enter currently does not use the same lifecycle as normal
    bed-triggered Dream entry.
 
+FIXED - Sprint 2
+
 4. /dream exit currently uses the old hardcoded Overworld teleport.
+
+FIXED - Sprint 2
 
 5. Dream duration is hardcoded.
 
 6. Dream beds need to be disabled gracefully.
    Do NOT use a dimension type where bed_works=false unless exploding
    beds are desired.
+
+FIXED - Sprint 2.... beds explode :)
 
 7. Return position is only a BlockPos.
    Eventually preserve:
@@ -107,6 +109,10 @@ FIXED - Sprint 2
    session while one is already active.
 
 10. Dream spawn positioning is temporary and unsafe.
+
+11. Player death while Dreaming currently leaves the DreamSession active.
+
+12. Store an absolute server/world game-time deadline rather than “10 seconds remaining.”
 
 Decisions Made
 --------------
@@ -211,8 +217,8 @@ Definition of Done
 - A player cannot start a second Dream while already Dreaming - COMPLETE
 - Beds cannot trigger another Dream while inside dream:dream - COMPLETE
 - Beds cannot be usable inside a dream. - COMPLETE
-- Dream entry uses a safe spawn position
-- Wake-up returns the player reliably to their stored origin
+- Dream entry uses a safe spawn position - COMPLETE
+- Wake-up returns the player reliably to their stored origin - non issue, works as intended already. COMPLETE?
 - Manual /dream exit and timed wake behave identically - COMPLETE
 
 - Vanilla sleep behavior is preserved when Dream activation is inactive
@@ -226,3 +232,11 @@ Definition of Done
 - Existing Sprint 1 functionality still works
 - No crashes during normal enter / wake flow
 - No crashes during invalid or blocked sleep attempts
+
+Observed during testing:
+- Quitting while inside dream:dream destroys the in-memory DreamSession.
+- On relog, the player remains in the Dream dimension but has no active
+  timer and /dream exit cannot determine the return location.
+
+Required:
+- Dream session state must survive server shutdown / player relog.
