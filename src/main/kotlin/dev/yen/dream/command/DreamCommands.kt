@@ -4,7 +4,6 @@ import com.mojang.brigadier.CommandDispatcher
 import dev.yen.dream.service.DreamService
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
-import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.event.RegisterCommandsEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent

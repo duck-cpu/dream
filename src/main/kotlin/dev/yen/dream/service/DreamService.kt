@@ -26,7 +26,6 @@ object DreamService {
             player.server.getLevel(DreamDimensions.DREAM)
                 ?: return false
 
-        // existing session creation + teleport...
         val session =
             DreamSession(
                 originDimension = player.level().dimension(),

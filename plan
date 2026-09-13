@@ -28,43 +28,45 @@ Completed
 [x] Sleeping in a bed triggers Dream entry
 [x] DreamSession tracks player-specific session state
 [x] Origin dimension and bed position are stored
-[x] Server tick handler monitors Dream sessions
-[x] Player automatically wakes when the timer expires
-[x] Player returns to their original bed
-[x] /dream enter and /dream exit debug commands exist
+[x] Server tick handler monitors active Dream sessions
+[x] Player automatically wakes when the session expires
+[x] Player returns to the bed they slept in
+[x] Basic /dream enter and /dream exit debug commands exist
 [x] Cross-dimensional teleport works
 [x] Integrated-server testing completed successfully
 
 
-Initial Prototype Limitations
------------------------------
-These were accepted during Sprint 1 and addressed or deferred later:
+Accepted Prototype Limitations
+------------------------------
+The initial prototype intentionally left several systems incomplete:
 
 - Dream duration hardcoded to 10 seconds / 200 ticks
 - Flat test Dream world
 - Unsafe temporary Dream spawn
 - Duplicate enter/wake logic
-- In-memory-only sessions
+- In-memory-only Dream sessions
 - Nested Dream sessions possible
 - Beds usable inside Dream
 - No vanilla sleep validation
 - No activation / opt-in mechanic
 
+Most lifecycle-related limitations were addressed during Sprint 2.
+
 
 
 SPRINT 2 — DREAM LIFECYCLE HARDENING
 ====================================
-STATUS: IN PROGRESS
+STATUS: COMPLETE
 
 Goal
 ----
 Turn the Sprint 1 prototype into a reliable Dream lifecycle with:
 
 - one shared entry/exit system
-- persistent sessions
+- persistent Dream sessions
 - safe Dream entry
 - correct vanilla sleep validation
-- normal vanilla sleep available when Dream activation is disabled
+- normal vanilla sleeping when Dream activation is disabled
 
 
 Current Dream Flow
@@ -76,7 +78,7 @@ Player uses bed
 ↓
 Dream mod does nothing
 ↓
-100% vanilla sleeping behavior
+Vanilla Minecraft handles sleeping normally
 
 
 DREAM ACTIVATION ENABLED
@@ -91,7 +93,7 @@ If vanilla rejects sleep:
 If vanilla accepts sleep:
     Player briefly enters valid vanilla sleep
     ↓
-    Normal vanilla sleep behavior/stat/advancement occurs
+    Vanilla sleep stats / advancement behavior occurs
     ↓
     Dream mod stops normal sleep
     ↓
@@ -102,94 +104,70 @@ If vanilla accepts sleep:
 
 Lifecycle
 ---------
-
 [x] One shared DreamService handles Dream entry
-
 [x] One shared DreamService handles waking
-
 [x] Bed-triggered Dreams and debug commands use the shared lifecycle
-
 [x] /dream enter uses the normal Dream entry lifecycle
-
 [x] /dream exit uses the normal Dream wake lifecycle
-
 [x] Manual /dream exit and timed wake behave identically
-
 [x] A player cannot begin a second Dream while already Dreaming
-
 [x] Wake-up reliably returns the player to the stored origin
-
 [x] Bed-triggered Dreams return the player to the bed they slept in
-
 [x] Dream sessions are keyed per player UUID
 
 
 Dream Dimension
 ---------------
-
-[x] Dream entry uses a safe dynamically-determined Y position
-
+[x] Dream entry uses a dynamically determined surface Y position
 [x] Beds cannot be used normally inside dream:dream
-
 [x] Beds intentionally explode inside dream:dream
     Implementation: dream dimension type uses bed_works=false
-
-[x] Entering the Dream no longer uses the old hardcoded Y=80 spawn
+[x] Dream entry no longer uses the original hardcoded Y=80 spawn
 
 
 Vanilla Sleep Integration
 -------------------------
-
-[x] Vanilla decides whether the player is allowed to sleep
-
+[x] Vanilla determines whether the player is allowed to sleep
 [x] Daytime bed attempts do not start a Dream
-
 [x] Nearby hostile mobs prevent Dream entry
-
 [x] Other vanilla-invalid sleep attempts do not start a Dream
-
-[x] Successful sleep can transition into a Dream
-
+[x] Successful vanilla sleep can transition into a Dream
 [x] Player is removed from the vanilla sleeping state before Dream entry
-
 [x] Dreaming does not accidentally trigger vanilla night skipping
+[x] Vanilla sleep advancement/stat behavior still occurs before teleportation
+[x] Vanilla sleeping remains available when Dream activation is disabled
 
-[x] Vanilla sleep advancement/stat behavior still occurs
-    before Dream teleportation
 
-[ ] Vanilla sleeping remains available when Dream activation is disabled
-    NEXT TASK: temporary boolean activation gate
+Activation Gate
+---------------
+[x] Temporary Dream activation boolean exists
+[x] activation = false preserves normal vanilla sleep
+[x] activation = true allows valid vanilla sleep to transition into a Dream
+[x] /dream debug commands remain usable regardless of activation state
+
+The temporary boolean will be replaced by the Dream Anchor system
+during Sprint 3.
 
 
 Session Persistence
 -------------------
-
 [x] Dream session survives Save & Quit
-
 [x] Dream session survives integrated-server shutdown/restart
-
-[x] Dream session is restored when the player logs back in inside dream:dream
-
+[x] Dream session restores when the player logs back in inside dream:dream
 [x] /dream exit works after relogging
-
-[x] Automatic wake timer works after relogging
-
+[x] Automatic wake works after relogging
 [x] Remaining Dream duration is persisted
-
-[x] Remaining timer resumes rather than resetting to a full session
-
-[x] Persistent Dream data is removed after waking
-
-[x] Debug countdown currently prints Dream time remaining in chat
+[x] Remaining duration resumes instead of resetting to a full session
+[x] Persistent Dream data is cleared after waking
+[x] Debug countdown displays remaining Dream time in chat
 
 
 Current Timer Behavior
 ----------------------
-
 Dream duration:
     10 seconds / 200 ticks
 
-Current persistence behavior:
+Current offline behavior:
     Dream time pauses while the player/server is offline.
 
 Example:
@@ -202,54 +180,20 @@ Reload world
 ↓
 Approximately 6 seconds remain
 
-Future option:
-    Replace remaining-tick persistence with an absolute
-    world/server game-time deadline if Dream time should
-    continue progressing while offline.
+Possible future behavior:
+    Store an absolute world/server game-time deadline so Dream time
+    continues progressing while offline.
 
 
-
-SPRINT 2 — REMAINING WORK
-=========================
-
-Immediate
----------
-
-[x] Add temporary Dream activation boolean
-
-Desired behavior:
-
-activation = false
-↓
-bed behaves exactly like vanilla Minecraft
-
-activation = true
-↓
-valid vanilla sleep transitions into Dream
-
-The boolean is temporary infrastructure.
-
-The actual Dream Anchor activation mechanic will be implemented
-in a later sprint.
-
-
-Final Regression Testing
-------------------------
-
+Regression Testing
+------------------
 [x] Existing Sprint 1 functionality still works
-
 [x] No crashes during normal Dream entry
-
 [x] No crashes during timed wake
-
 [x] No crashes during /dream exit
-
-[x] No crashes during invalid/blocked sleep attempts
-
+[x] No crashes during invalid or blocked sleep attempts
 [x] Vanilla sleeping works normally when Dream activation is disabled
-
 [x] Dream sleeping works normally when Dream activation is enabled
-
 [x] Session persistence works across Save & Quit
 
 
@@ -259,55 +203,52 @@ KNOWN ISSUES / TECHNICAL DEBT
 
 Dream Spawn Damage
 ------------------
+Dream spawn currently uses a fixed X/Z location and searches vertically
+for a valid surface.
 
-Dream spawn currently uses a fixed X/Z region and searches vertically
-for terrain.
-
-If the terrain around that location is destroyed or heavily modified
-(for example by exploding beds), a later Dream entry may find an unsafe
-surface or allow the player to fall into the void.
+If terrain around the spawn is destroyed or heavily modified, such as
+by an exploding bed, a later Dream entry may find an unsafe surface or
+allow the player to fall into the void.
 
 Possible future solutions:
 
-- Search outward for a valid safe spawn location
+- Search outward for a safe spawn location
 - Protect the Dream entrance area
 - Regenerate the entrance area when needed
-- Spawn into a generated entrance room
-- Replace this system entirely when procedural Dream generation exists
+- Spawn players into a generated entrance room
+- Replace the system when procedural Dream generation is implemented
 
 
 Player Death
 ------------
-
 Player death while Dreaming may leave the DreamSession active.
 
-Future work must define:
+Future behavior must define:
 
-- whether death immediately wakes the player
+- whether death immediately ends the Dream
 - where the player respawns
 - whether Dream inventory/progression is lost
-- when the persistent session is cleared
+- when persistent Dream data is cleared
 
 
 Return Position
 ---------------
-
 Current bed-triggered wake behavior works correctly using BlockPos.
 
-Possible future improvement if required:
+Possible future improvements if required:
 
-- vanilla-style safe bed wake location
-- exact X/Y/Z for debug-command entry
+- vanilla-style safe bed wake positioning
+- exact X/Y/Z restoration for debug-command Dreams
 - yaw/pitch restoration
 - behavior when the original bed has been destroyed
 
 
 Dream Duration
 --------------
+Dream duration is currently hardcoded.
 
-Dream duration is still hardcoded.
+Future options:
 
-Future:
 - configuration
 - gameplay-dependent duration
 - progression-dependent duration
@@ -315,13 +256,23 @@ Future:
 
 Offline Timer Semantics
 -----------------------
-
 Current behavior:
     Dream timer pauses while offline.
 
 Future option:
     Store an absolute world/server game-time deadline so Dream time
-    can continue progressing while offline.
+    continues progressing while offline.
+
+
+Persistence Edge Cases
+----------------------
+Future handling may be required for:
+
+- corrupted persisted DreamSession data
+- missing origin dimensions
+- unavailable Dream dimension
+- unusual player lifecycle events
+- death while persistent Dream state exists
 
 
 
@@ -330,30 +281,30 @@ FUTURE DESIGN CONSIDERATIONS
 
 Dream Activation
 ----------------
+Working concept:
+    Dream Anchor
 
-Working concept: Dream Anchor
+Possible physical forms:
 
-Possible physical form:
 - dreamcatcher
 - lantern
 - cursed pot
 - plant
 - other thematic block/item
 
-The implementation should remain generic enough that the visual form
+Implementation should remain generic enough that the visual form
 can change later.
 
 
 Same-Night Dream Re-entry
 -------------------------
-
 Future rule:
 
 After waking from a Dream, prevent that player from entering another
 Dream during the same Minecraft night.
 
-This matters primarily in multiplayer when another player causes the
-night to continue rather than immediately advancing to morning.
+This primarily matters in multiplayer where another player may cause
+the night to continue instead of immediately advancing to morning.
 
 Exact "same night" semantics should be designed alongside future
 night-progression behavior.
@@ -361,7 +312,6 @@ night-progression behavior.
 
 Night Progression
 -----------------
-
 Eventually determine how Dream completion interacts with Minecraft time.
 
 Questions include:
@@ -376,18 +326,17 @@ Questions include:
 
 Multiplayer
 -----------
-
 - Per-player Dream sessions
 - Other players may remain in the Overworld
 - Determine night-skip behavior
 - Determine whether Dream spaces are private or shared
 - Determine what happens when a Dreamer disconnects
-- Determine what happens when a server shuts down
+- Determine what happens when the server shuts down
+- Determine interaction with sleeping-percentage gamerules
 
 
 Dream World Generation
 ----------------------
-
 Long-term direction:
 
 - procedural Dream dungeon
@@ -401,18 +350,16 @@ Long-term direction:
 
 Progression
 -----------
-
 - Dream-exclusive loot
 - Depth-based rewards
 - Increasing enemy difficulty
 - Apotheosis integration
 - Separate Dream progression
-- Eventually limited Dream ↔ Overworld item transfer
+- Limited Dream ↔ Overworld item transfer
 
 
 Failure States
 --------------
-
 Future handling required for:
 
 - player death while Dreaming
@@ -428,7 +375,6 @@ Future handling required for:
 
 Configuration
 -------------
-
 Eventually configurable:
 
 - Dream duration
@@ -441,16 +387,68 @@ Eventually configurable:
 
 
 
-NEXT SPRINT
-===========
-
 SPRINT 3 — DREAM ACTIVATION / DREAM ANCHOR
+==========================================
+STATUS: NEXT
 
-Likely goals:
+Goal
+----
+Replace the temporary global activation boolean with an intentional,
+in-world mechanism that allows individual beds/players to opt into
+Dream gameplay without replacing normal Minecraft sleeping.
 
-- Replace temporary activation boolean with real activation logic
-- Introduce Dream Anchor concept
-- Detect whether an eligible Anchor is associated with a bed/player
-- No Anchor → completely vanilla sleep
-- Anchor active → valid vanilla sleep becomes Dream entry
-- Begin defining how players intentionally opt into Dream gameplay
+
+Proposed Behavior
+-----------------
+
+NO DREAM ANCHOR
+
+Player uses bed
+↓
+Vanilla sleeping behavior
+↓
+Dream mod does nothing
+
+
+VALID DREAM ANCHOR
+
+Player uses bed
+↓
+Vanilla validates sleep normally
+↓
+If sleep is invalid:
+    Dream does not start
+
+If sleep is valid:
+    Dream Anchor condition succeeds
+    ↓
+    Player transitions into Dream
+    ↓
+    Existing DreamService lifecycle handles everything else
+
+
+Initial Sprint 3 Goals
+----------------------
+[ ] Define Dream Anchor activation rules
+[ ] Introduce Dream Anchor block/item
+[ ] Register Dream Anchor with Forge
+[ ] Add basic item/block resources
+[ ] Detect whether a bed has an eligible nearby Dream Anchor
+[ ] Replace temporary DREAM_ACTIVATION_ENABLED boolean
+[ ] No Anchor → completely vanilla sleep
+[ ] Valid Anchor → successful vanilla sleep becomes Dream entry
+[ ] Ensure multiplayer players can independently opt into Dreaming
+[ ] Preserve all Sprint 2 lifecycle behavior
+[ ] Regression-test Dream entry, wake, persistence, and normal sleep
+
+
+Not Part of Sprint 3 Unless Needed
+---------------------------------
+- Procedural Dream dungeon generation
+- Dream loot progression
+- Night skipping after Dream completion
+- Same-night Dream re-entry restrictions
+- Player-specific Dream dimensions
+- Final Dream duration/config system
+- Death handling overhaul
+- Dream/Overworld inventory transfer
