@@ -625,10 +625,22 @@ Current Work Order
 [x] Derive 25 x 25 chunk bounds from grid coordinates
 [x] Assign and persist a safe personal Dream spawn
 [x] Replace global X=0 / Z=0 Dream spawn
-[ ] Enforce logical region borders
-[ ] Multiplayer/regression-test region ownership and persistence
-[ ] Finish Gilded Pot once final model/assets are ready
-
+[x] Enforce logical region borders
+Dream Region Borders
+--------------------
+[x] Define precise geometric region boundaries
+[x] Implement server-side player movement enforcement
+[x] Prevent block break/place/use across foreign borders
+[x] Sync active region bounds to the client
+[x] Render client-side Dream boundary planes
+[x] Add animated portal-style Dream border texture
+[x] Add distance-based border visibility/fade
+[x] Verify shared borders render correctly for adjacent players
+[x] Verify border rendering does not materially hurt performance
+[x] Final border multiplayer/regression test
+------------------
+[x] Multiplayer/regression-test region ownership and persistence
+[x] Finish Gilded Pot once final model/assets are ready
 
 PART 1 — PERSONAL DREAM WORLD
 =============================

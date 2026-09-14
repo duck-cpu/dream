@@ -1,0 +1,106 @@
+{
+  "credit": "Made with Blockbench",
+  "texture_size": [8, 8],
+  "textures": {
+    "2": "dream:block/gilded_pot_neck",
+    "3": "dream:block/gilded_pot_body",
+    "4": "dream:block/gilded_pot_rim",
+    "particle": "dream:block/gilded_pot_body"
+  },
+  "elements": [
+    {
+      "name": "body",
+      "from": [3.0588, 0, 3.0588],
+      "to": [12.9412, 13.6471, 12.9412],
+      "faces": {
+        "north": {
+          "uv": [0, 0, 16, 16],
+          "texture": "#3"
+        },
+        "east": {
+          "uv": [0, 16, 16, 0],
+          "texture": "#3"
+        },
+        "south": {
+          "uv": [0, 0, 16, 16],
+          "texture": "#3"
+        },
+        "west": {
+          "uv": [0, 16, 16, 0],
+          "rotation": 90,
+          "texture": "#3"
+        },
+        "up": {
+          "uv": [16, 16, 0, 0],
+          "texture": "#3"
+        },
+        "down": {
+          "uv": [16, 0, 0, 16],
+          "texture": "#3"
+        }
+      }
+    },
+    {
+      "name": "neck",
+      "from": [5.8824, 13.6471, 5.8824],
+      "to": [10.1176, 15.0588, 10.1176],
+      "faces": {
+        "north": {
+          "uv": [0, 0, 11.33333, 8.66667],
+          "texture": "#2"
+        },
+        "east": {
+          "uv": [0, 0.66667, 11.33333, 10.33333],
+          "texture": "#2"
+        },
+        "south": {
+          "uv": [0, 0, 8.66667, 16],
+          "texture": "#2"
+        },
+        "west": {
+          "uv": [4.33333, 0.66667, 14.66667, 12.33333],
+          "texture": "#2"
+        },
+        "up": {
+          "uv": [4.33333, 8, 0, 2.33333],
+          "texture": "#2"
+        },
+        "down": {
+          "uv": [13, 0, 8.66667, 2.66667],
+          "texture": "#2"
+        }
+      }
+    },
+    {
+      "name": "rim",
+      "from": [5.4118, 14.5882, 5.4118],
+      "to": [10.5882, 16, 10.5882],
+      "faces": {
+        "north": {
+          "uv": [0, 0, 3.2, 3.2],
+          "texture": "#4"
+        },
+        "east": {
+          "uv": [0, 6.4, 3.2, 9.6],
+          "texture": "#4"
+        },
+        "south": {
+          "uv": [6.4, 0, 9.6, 3.2],
+          "texture": "#4"
+        },
+        "west": {
+          "uv": [6.4, 6.4, 9.6, 9.6],
+          "texture": "#4"
+        },
+        "up": {
+          "uv": [5, 16, 0, 11],
+          "texture": "#4"
+        },
+        "down": {
+          "uv": [16, 0, 12.8, 3.2],
+          "texture": "#4"
+        }
+      }
+    }
+  ]
+}

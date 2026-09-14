@@ -7,6 +7,10 @@ import net.minecraft.world.level.Level
 object DreamActivationService {
     private const val ANCHOR_RADIUS = 3
 
+    /**
+     * Dream sleep is enabled when a Gilded Pot exists within
+     * three blocks of the bed in any direction.
+     */
     fun isDreamEnabled(
         level: Level,
         bedPos: BlockPos,
@@ -25,11 +29,19 @@ object DreamActivationService {
                 ANCHOR_RADIUS,
             )
 
-        for (pos in BlockPos.betweenClosed(minPos, maxPos)) {
+        for (
+            pos in
+                BlockPos.betweenClosed(
+                    minPos,
+                    maxPos,
+                )
+        ) {
             if (
                 level
                     .getBlockState(pos)
-                    .`is`(DreamBlocks.DREAM_ANCHOR.get())
+                    .`is`(
+                        DreamBlocks.GILDED_POT.get(),
+                    )
             ) {
                 return true
             }

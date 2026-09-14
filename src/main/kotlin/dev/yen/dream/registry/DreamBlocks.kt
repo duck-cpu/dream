@@ -23,19 +23,35 @@ object DreamBlocks {
             Dream.MOD_ID,
         )
 
-    val DREAM_ANCHOR: RegistryObject<Block> =
-        BLOCKS.register("dream_anchor") {
+    /*
+     * The Gilded Pot enables Dream entry when placed near a bed.
+     *
+     * For now this is still a basic Block. We'll give it its proper
+     * collision shape, sounds, storage, and other pot behavior after
+     * validating the exported Blockbench model in-game.
+     */
+    val GILDED_POT: RegistryObject<Block> =
+        BLOCKS.register("gilded_pot") {
             Block(
                 BlockBehaviour.Properties
                     .of()
-                    .strength(2.0f),
+                    .strength(2.0f)
+                    /*
+                     * The visual model does not fill the entire cube, so
+                     * don't let Minecraft treat it as a full opaque cube
+                     * for rendering/face occlusion purposes.
+                     */
+                    .noOcclusion(),
             )
         }
 
-    val DREAM_ANCHOR_ITEM =
-        ITEMS.register("dream_anchor") {
+    /*
+     * Inventory/placeable item corresponding to the Gilded Pot block.
+     */
+    val GILDED_POT_ITEM =
+        ITEMS.register("gilded_pot") {
             BlockItem(
-                DREAM_ANCHOR.get(),
+                GILDED_POT.get(),
                 Item.Properties(),
             )
         }

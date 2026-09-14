@@ -37,6 +37,47 @@ data class DreamRegion(
     val centerBlockZ: Int
         get() = minBlockZ + REGION_SIZE_BLOCKS / 2
 
+    /*
+     * Block coordinates are stored as inclusive integer ranges:
+     *
+     * Region (0, 0):
+     *     blocks X 0..399
+     *
+     * But movement happens in continuous world coordinates, so the
+     * corresponding geometric region is:
+     *
+     *     0.0 <= X < 400.0
+     *
+     * maxXExclusive/maxZExclusive represent those outer boundary planes.
+     * These are also the exact planes the client renderer will eventually use.
+     */
+
+    val minX: Double
+        get() = minBlockX.toDouble()
+
+    val maxXExclusive: Double
+        get() = (maxBlockX + 1).toDouble()
+
+    val minZ: Double
+        get() = minBlockZ.toDouble()
+
+    val maxZExclusive: Double
+        get() = (maxBlockZ + 1).toDouble()
+
+    /*
+     * Checks a precise horizontal world position rather than an integer
+     * BlockPos. This is useful for players, entities, projectiles, etc.
+     */
+
+    fun containsHorizontal(
+        x: Double,
+        z: Double,
+    ): Boolean =
+        x >= minX &&
+            x < maxXExclusive &&
+            z >= minZ &&
+            z < maxZExclusive
+
     fun containsBlock(
         x: Int,
         z: Int,
