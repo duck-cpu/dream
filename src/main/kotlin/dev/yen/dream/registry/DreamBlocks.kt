@@ -1,9 +1,10 @@
 package dev.yen.dream.registry
 
 import dev.yen.dream.Dream
+import dev.yen.dream.block.GildedPotBlock
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
-import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.SoundType
 import net.minecraft.world.level.block.state.BlockBehaviour
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.DeferredRegister
@@ -24,29 +25,38 @@ object DreamBlocks {
         )
 
     /*
-     * The Gilded Pot enables Dream entry when placed near a bed.
+     * The Gilded Pot is the physical Dream Anchor.
      *
-     * For now this is still a basic Block. We'll give it its proper
-     * collision shape, sounds, storage, and other pot behavior after
-     * validating the exported Blockbench model in-game.
+     * A nearby Gilded Pot enables Dream entry for eligible beds.
+     * Storage behavior will be added after the physical block behavior
+     * is verified.
      */
-    val GILDED_POT: RegistryObject<Block> =
+    val GILDED_POT: RegistryObject<GildedPotBlock> =
         BLOCKS.register("gilded_pot") {
-            Block(
+            GildedPotBlock(
                 BlockBehaviour.Properties
                     .of()
+                    /*
+                     * Similar durability to the current prototype.
+                     */
                     .strength(2.0f)
                     /*
-                     * The visual model does not fill the entire cube, so
-                     * don't let Minecraft treat it as a full opaque cube
-                     * for rendering/face occlusion purposes.
+                     * Use vanilla decorated-pot sounds for placement,
+                     * stepping, hits, and normal block interaction.
+                     */
+                    .sound(
+                        SoundType.DECORATED_POT,
+                    )
+                    /*
+                     * The rendered model does not occupy the entire
+                     * Minecraft block cube.
                      */
                     .noOcclusion(),
             )
         }
 
     /*
-     * Inventory/placeable item corresponding to the Gilded Pot block.
+     * Inventory/placeable representation of the Gilded Pot.
      */
     val GILDED_POT_ITEM =
         ITEMS.register("gilded_pot") {

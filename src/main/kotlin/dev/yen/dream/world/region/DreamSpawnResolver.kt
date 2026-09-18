@@ -3,22 +3,46 @@ package dev.yen.dream.world.region
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.levelgen.Heightmap
+import net.minecraft.world.phys.shapes.CollisionContext
 
 object DreamSpawnResolver {
+    /*
+     * Search only a small area around the center of the player's region
+     * for naturally safe terrain.
+     *
+     * This is NOT used to decide whether the player keeps the region.
+     * Region ownership has already been permanently determined by the
+     * square-spiral allocator before this resolver runs.
+     *
+     * The search merely prevents us from constructing the emergency
+     * platform when perfectly usable natural terrain exists nearby.
+     */
+    private const val NATURAL_SPAWN_SEARCH_RADIUS = 32
+
     /**
-     * Resolves a permanent spawn at the exact horizontal center
-     * of the player's assigned Dream region.
+     * Resolve the player's permanent initial Dream spawn.
      *
-     * Region assignment is intentionally terrain-agnostic.
+     * Preferred behavior:
      *
-     * We do NOT search elsewhere for nicer terrain and we do NOT
-     * reject or reroll regions because their center happens to be
-     * ocean, lava, forest, mountain, etc.
+     *     region center
+     *         ↓
+     *     nearby natural safe position
+     *         ↓
+     *     persist that position
      *
-     * If the natural center position is unsafe, we create a small
-     * artificial arrival platform there instead.
+     * If no natural position exists within the bounded search radius:
+     *
+     *     region center
+     *         ↓
+     *     emergency 3 x 3 platform
+     *         ↓
+     *     persist that position
+     *
+     * Terrain never causes the player's assigned region to be rerolled
+     * or replaced.
      */
     fun findSafeSpawn(
         dreamLevel: ServerLevel,
@@ -31,106 +55,231 @@ object DreamSpawnResolver {
             region.centerBlockZ
 
         /*
-         * Only the chunk containing the region center needs to exist.
+         * Keep track of chunks we have explicitly generated/loaded
+         * during this resolution attempt.
          *
-         * The old resolver could synchronously inspect/generate much
-         * of the entire 25 x 25 chunk region while looking for land.
-         * That is unnecessary because terrain quality must never
-         * influence region ownership.
+         * Multiple candidate blocks can belong to the same chunk, so
+         * there is no reason to repeatedly force-load that chunk.
          */
-        dreamLevel.getChunk(
-            centerX shr 4,
-            centerZ shr 4,
+        val loadedChunks =
+            mutableSetOf<Long>()
+
+        /*
+         * Search outward from the exact center in square rings.
+         *
+         * This makes positions near the center strongly preferred while
+         * keeping the search bounded and predictable.
+         */
+        for (
+            radius in
+                0..NATURAL_SPAWN_SEARCH_RADIUS
+        ) {
+            /*
+             * Radius zero is the exact center column.
+             */
+            if (radius == 0) {
+                val naturalSpawn =
+                    findNaturalSpawnAt(
+                        dreamLevel = dreamLevel,
+                        region = region,
+                        x = centerX,
+                        z = centerZ,
+                        loadedChunks = loadedChunks,
+                    )
+
+                if (naturalSpawn != null) {
+                    return naturalSpawn
+                }
+
+                continue
+            }
+
+            /*
+             * Search the north and south edges of this ring.
+             */
+            for (offsetX in -radius..radius) {
+                val northSpawn =
+                    findNaturalSpawnAt(
+                        dreamLevel = dreamLevel,
+                        region = region,
+                        x = centerX + offsetX,
+                        z = centerZ - radius,
+                        loadedChunks = loadedChunks,
+                    )
+
+                if (northSpawn != null) {
+                    return northSpawn
+                }
+
+                val southSpawn =
+                    findNaturalSpawnAt(
+                        dreamLevel = dreamLevel,
+                        region = region,
+                        x = centerX + offsetX,
+                        z = centerZ + radius,
+                        loadedChunks = loadedChunks,
+                    )
+
+                if (southSpawn != null) {
+                    return southSpawn
+                }
+            }
+
+            /*
+             * Search the west and east edges of this ring.
+             *
+             * The corners were already checked by the north/south
+             * loops, so exclude them here.
+             */
+            for (
+                offsetZ in
+                    -(radius - 1)..(radius - 1)
+            ) {
+                val westSpawn =
+                    findNaturalSpawnAt(
+                        dreamLevel = dreamLevel,
+                        region = region,
+                        x = centerX - radius,
+                        z = centerZ + offsetZ,
+                        loadedChunks = loadedChunks,
+                    )
+
+                if (westSpawn != null) {
+                    return westSpawn
+                }
+
+                val eastSpawn =
+                    findNaturalSpawnAt(
+                        dreamLevel = dreamLevel,
+                        region = region,
+                        x = centerX + radius,
+                        z = centerZ + offsetZ,
+                        loadedChunks = loadedChunks,
+                    )
+
+                if (eastSpawn != null) {
+                    return eastSpawn
+                }
+            }
+        }
+
+        /*
+         * No naturally safe location exists reasonably close to the
+         * region center.
+         *
+         * This is the only situation in which we alter terrain.
+         */
+        return createEmergencySpawn(
+            dreamLevel = dreamLevel,
+            centerX = centerX,
+            centerZ = centerZ,
+            loadedChunks = loadedChunks,
+        )
+    }
+
+    /**
+     * Attempt to resolve one natural spawn position at the supplied
+     * X/Z column.
+     *
+     * Returns null if the position is unsuitable.
+     */
+    private fun findNaturalSpawnAt(
+        dreamLevel: ServerLevel,
+        region: DreamRegion,
+        x: Int,
+        z: Int,
+        loadedChunks: MutableSet<Long>,
+    ): BlockPos? {
+        /*
+         * Spawn resolution must never escape the player's assigned
+         * Dream region.
+         */
+        if (!region.containsBlock(x, z)) {
+            return null
+        }
+
+        /*
+         * Heightmap data cannot be trusted for an unloaded Dream chunk.
+         *
+         * Explicitly generate/load the candidate chunk before asking
+         * Minecraft for its surface height.
+         *
+         * This prevents the -63 / minimum-build-height spawn bug.
+         */
+        ensureChunkLoaded(
+            dreamLevel = dreamLevel,
+            x = x,
+            z = z,
+            loadedChunks = loadedChunks,
         )
 
         /*
-         * WORLD_SURFACE gives us the first open position above the
-         * highest terrain or fluid at this exact X/Z coordinate.
+         * MOTION_BLOCKING_NO_LEAVES is preferable to WORLD_SURFACE for
+         * natural player spawning.
          *
-         * Examples:
+         * It ignores leaves and avoids treating tree canopies as the
+         * desired terrain surface.
          *
-         * grass surface -> one block above grass
-         * ocean surface -> one block above water
-         * lava surface  -> one block above lava
+         * Fluids still prevent the resulting position from passing our
+         * safety check below.
          */
-        val surfaceY =
+        val spawnY =
             dreamLevel.getHeight(
-                Heightmap.Types.WORLD_SURFACE,
-                centerX,
-                centerZ,
+                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                x,
+                z,
             )
 
         /*
-         * Leave enough vertical room for:
+         * Defensive sanity check.
          *
-         * floor
-         * feet
-         * head
-         *
-         * The clamps are mostly defensive because normal Overworld
-         * generation should already keep us well inside these limits.
+         * A legitimate generated surface should not be at or outside
+         * the dimension's build limits.
          */
-        val spawnY =
-            surfaceY.coerceIn(
-                dreamLevel.minBuildHeight + 1,
-                dreamLevel.maxBuildHeight - 2,
-            )
+        if (
+            spawnY <= dreamLevel.minBuildHeight ||
+            spawnY >= dreamLevel.maxBuildHeight - 1
+        ) {
+            return null
+        }
 
         val spawnPos =
             BlockPos(
-                centerX,
+                x,
                 spawnY,
-                centerZ,
+                z,
             )
 
-        /*
-         * If the exact center already has normal safe terrain,
-         * preserve it completely and simply use that position.
-         */
-        if (
+        return if (
             isSafeStandingPosition(
                 dreamLevel,
                 spawnPos,
             )
         ) {
-            return spawnPos
+            spawnPos
+        } else {
+            null
         }
-
-        /*
-         * The exact center is not naturally safe.
-         *
-         * This can happen when the assigned region center contains:
-         *
-         * - ocean
-         * - river
-         * - lava
-         * - leaves
-         * - awkward generated terrain
-         *
-         * The region is still valid. We make the spawn valid instead
-         * of looking somewhere else.
-         */
-        createArrivalPlatform(
-            dreamLevel,
-            spawnPos,
-        )
-
-        return spawnPos
     }
 
     /**
-     * Checks whether the player can safely stand at the supplied
-     * position without modifying the terrain.
+     * Determine whether a player can safely stand at spawnPos without
+     * changing the generated terrain.
      */
     private fun isSafeStandingPosition(
         dreamLevel: ServerLevel,
         spawnPos: BlockPos,
     ): Boolean {
+        val groundPos =
+            spawnPos.below()
+
         val headPos =
             spawnPos.above()
 
-        val groundPos =
-            spawnPos.below()
+        val groundState =
+            dreamLevel.getBlockState(
+                groundPos,
+            )
 
         val feetState =
             dreamLevel.getBlockState(
@@ -142,31 +291,34 @@ object DreamSpawnResolver {
                 headPos,
             )
 
-        val groundState =
-            dreamLevel.getBlockState(
-                groundPos,
-            )
-
         /*
-         * Feet and head require empty collision space and cannot
-         * contain water, lava, or another fluid.
+         * The player's feet position must contain no collision and no
+         * fluid.
+         *
+         * Grass, flowers, etc. are acceptable because they have no
+         * meaningful collision volume.
          */
         val feetClear =
             feetState
                 .getCollisionShape(
                     dreamLevel,
                     spawnPos,
+                    CollisionContext.empty(),
                 ).isEmpty &&
                 dreamLevel
                     .getFluidState(
                         spawnPos,
                     ).isEmpty
 
+        /*
+         * The player's head position must also be unobstructed.
+         */
         val headClear =
             headState
                 .getCollisionShape(
                     dreamLevel,
                     headPos,
+                    CollisionContext.empty(),
                 ).isEmpty &&
                 dreamLevel
                     .getFluidState(
@@ -174,8 +326,11 @@ object DreamSpawnResolver {
                     ).isEmpty
 
         /*
-         * Ground must actually support the player and must not
-         * itself be fluid.
+         * The block beneath the player must provide a sturdy upper
+         * surface and cannot itself contain fluid.
+         *
+         * This excludes water, lava, and other obviously invalid
+         * standing surfaces.
          */
         val safeGround =
             groundState.isFaceSturdy(
@@ -194,35 +349,75 @@ object DreamSpawnResolver {
     }
 
     /**
-     * Creates a minimal 3 x 3 safety platform centered on the
-     * permanent Dream spawn.
+     * Create a guaranteed spawn at the exact center of the player's
+     * region when no nearby natural position is usable.
      *
-     * This is a fallback only. Normal terrain remains untouched when
-     * the center already provides a valid standing position.
-     *
-     * A small platform guarantees that even an ocean or lava region
-     * remains a usable Dream region without changing its assignment.
+     * This is intentionally a last-resort fallback.
      */
-    private fun createArrivalPlatform(
+    private fun createEmergencySpawn(
         dreamLevel: ServerLevel,
-        spawnPos: BlockPos,
-    ) {
-        val floorY =
-            spawnPos.y - 1
+        centerX: Int,
+        centerZ: Int,
+        loadedChunks: MutableSet<Long>,
+    ): BlockPos {
+        /*
+         * Explicitly ensure that the center chunk exists before using
+         * its heightmap.
+         *
+         * Do this even though the natural search normally touched the
+         * center already. The emergency function should remain correct
+         * independently.
+         */
+        ensureChunkLoaded(
+            dreamLevel = dreamLevel,
+            x = centerX,
+            z = centerZ,
+            loadedChunks = loadedChunks,
+        )
 
         /*
-         * Build a 3 x 3 stone floor beneath the player.
+         * WORLD_SURFACE is appropriate for the fallback because we
+         * want the visible surface height, including an ocean surface.
          *
-         * This is intentionally small: enough to guarantee a safe
-         * arrival without substantially replacing the generated terrain.
+         * For an ocean Dream this places the platform at approximately
+         * sea level rather than on the ocean floor.
+         */
+        val surfaceY =
+            dreamLevel.getHeight(
+                Heightmap.Types.WORLD_SURFACE,
+                centerX,
+                centerZ,
+            )
+
+        val spawnY =
+            surfaceY.coerceIn(
+                dreamLevel.minBuildHeight + 1,
+                dreamLevel.maxBuildHeight - 2,
+            )
+
+        val spawnPos =
+            BlockPos(
+                centerX,
+                spawnY,
+                centerZ,
+            )
+
+        val floorY =
+            spawnY - 1
+
+        /*
+         * Create the smallest practical guaranteed landing area.
+         *
+         * This platform is temporary design-wise. A future Dream-region
+         * generation system may replace this fallback entirely.
          */
         for (offsetX in -1..1) {
             for (offsetZ in -1..1) {
                 val floorPos =
                     BlockPos(
-                        spawnPos.x + offsetX,
+                        centerX + offsetX,
                         floorY,
-                        spawnPos.z + offsetZ,
+                        centerZ + offsetZ,
                     )
 
                 dreamLevel.setBlockAndUpdate(
@@ -233,8 +428,8 @@ object DreamSpawnResolver {
         }
 
         /*
-         * Guarantee two blocks of clear space at the actual spawn
-         * coordinate even if unusual terrain generation occupies it.
+         * Guarantee two blocks of clear player space directly above
+         * the center of the platform.
          */
         dreamLevel.setBlockAndUpdate(
             spawnPos,
@@ -245,5 +440,45 @@ object DreamSpawnResolver {
             spawnPos.above(),
             Blocks.AIR.defaultBlockState(),
         )
+
+        return spawnPos
+    }
+
+    /**
+     * Explicitly generate/load the chunk containing a candidate X/Z
+     * coordinate.
+     *
+     * ChunkPos.asLong() gives us a compact key so the same chunk is not
+     * force-loaded repeatedly during one spawn-resolution pass.
+     */
+    private fun ensureChunkLoaded(
+        dreamLevel: ServerLevel,
+        x: Int,
+        z: Int,
+        loadedChunks: MutableSet<Long>,
+    ) {
+        val chunkX =
+            x shr 4
+
+        val chunkZ =
+            z shr 4
+
+        val chunkKey =
+            ChunkPos.asLong(
+                chunkX,
+                chunkZ,
+            )
+
+        if (
+            loadedChunks.add(
+                chunkKey,
+            )
+        ) {
+            dreamLevel.getChunk(
+                chunkX,
+                chunkZ,
+            )
+        }
     }
 }
+
