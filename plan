@@ -1,6 +1,94 @@
 DREAM MOD DEVELOPMENT PLAN
 ==========================
 
+PROJECT TARGET
+==============
+Minecraft:       1.20.1
+Forge:           47.4.10
+Kotlin:          1.9.22
+KotlinForForge:  4.10.0
+Java:            17
+
+Current mod ID:
+    dream
+
+
+CORE ARCHITECTURAL INVARIANTS
+=============================
+
+Dream Dimension
+---------------
+[x] Dream uses one shared persistent dimension:
+        dream:dream
+
+[x] Dream uses Overworld-style noise generation.
+[x] Dream uses Overworld biome generation.
+[x] Dream uses a deterministic seed distinct from the Overworld.
+[x] Dream time is reported 12,000 ticks opposite the Overworld.
+[x] Server daylight behavior follows Dream's inverted clock.
+[x] Daylight-sensitive mobs use Dream daylight correctly.
+[x] Dream dimension type has:
+        bed_works = false
+[x] Beds therefore intentionally explode inside dream:dream.
+[x] Dream dimension is not a separate ServerLevel per player.
+
+Personal Regions
+----------------
+[x] Every player owns one permanent region inside the shared Dream dimension.
+[x] Region ownership is keyed by player UUID.
+[x] Region size is fixed at:
+        25 x 25 chunks
+        400 x 400 blocks
+[x] Region bounds are derived from grid coordinates.
+[x] Region cells directly border one another.
+[x] Region assignment uses an outward-growing square spiral.
+[x] Terrain quality does not currently alter region ownership.
+[x] Region ownership persists across logout and server restart.
+
+Region formulas:
+
+    REGION_SIZE_CHUNKS = 25
+    REGION_SIZE_BLOCKS = 400
+
+    minChunkX = gridX * 25
+    maxChunkX = minChunkX + 24
+
+    minChunkZ = gridZ * 25
+    maxChunkZ = minChunkZ + 24
+
+    minBlockX = minChunkX * 16
+    maxBlockX = ((maxChunkX + 1) * 16) - 1
+
+    minBlockZ = minChunkZ * 16
+    maxBlockZ = ((maxChunkZ + 1) * 16) - 1
+
+Dream Activation
+----------------
+[x] Gilded Pot is the current Dream activation block.
+[x] Registry ID:
+        dream:gilded_pot
+[x] A bed is Dream-enabled when a Gilded Pot exists within 3 blocks.
+[x] Gilded Pot activation is local to the bed being used.
+[x] No Gilded Pot -> vanilla sleeping remains untouched.
+[x] Gilded Pot does not bypass vanilla sleep validation.
+[x] Daytime sleep rejection still prevents Dream entry.
+[x] Nearby-monster sleep rejection still prevents Dream entry.
+[x] Gilded Pot is not consumed by Dream entry.
+
+Dream Session
+-------------
+[x] DreamSession is temporary visit state.
+[x] DreamWorldSavedData is permanent world/ownership state.
+[x] Dream sessions are keyed per player UUID.
+[x] Nested Dream sessions are prevented.
+[x] Dream sessions persist through Save & Quit / server restart.
+[x] Remaining Dream time resumes after reconnect.
+[x] Wake returns the player to the stored origin bed position.
+[x] Current development duration is:
+        20,000 ticks
+        1,000 seconds
+        approximately 16 minutes 40 seconds
+
 
 SPRINT 1 — DOES THE IDEA WORK?
 ==============================
@@ -8,50 +96,21 @@ STATUS: COMPLETE
 
 Goal
 ----
-Prove the minimum viable Dream lifecycle:
-
-Player sleeps
-↓
-Dream session is created
-↓
-Player enters custom Dream dimension
-↓
-Session timer expires
-↓
-Player returns to the bed they slept in
-
+Prove the minimum viable Dream lifecycle.
 
 Completed
 ---------
-[x] Forge/Kotlin mod loads successfully
-[x] Custom dream:dream dimension exists
-[x] Sleeping in a bed triggers Dream entry
-[x] DreamSession tracks player-specific session state
-[x] Origin dimension and bed position are stored
-[x] Server tick handler monitors active Dream sessions
-[x] Player automatically wakes when the session expires
-[x] Player returns to the bed they slept in
-[x] Basic /dream enter and /dream exit debug commands exist
-[x] Cross-dimensional teleport works
-[x] Integrated-server testing completed successfully
-
-
-Accepted Prototype Limitations
-------------------------------
-The initial prototype intentionally left several systems incomplete:
-
-- Dream duration hardcoded to 10 seconds / 200 ticks
-- Flat test Dream world
-- Unsafe temporary Dream spawn
-- Duplicate enter/wake logic
-- In-memory-only Dream sessions
-- Nested Dream sessions possible
-- Beds usable inside Dream
-- No vanilla sleep validation
-- No activation / opt-in mechanic
-
-Most lifecycle-related limitations were addressed during Sprint 2.
-
+[x] Forge/Kotlin mod loads successfully.
+[x] Custom dream:dream dimension exists.
+[x] Sleeping in a bed can trigger Dream entry.
+[x] DreamSession tracks player-specific session state.
+[x] Origin dimension and bed position are stored.
+[x] Server tick handler monitors active Dream sessions.
+[x] Player automatically wakes when the session expires.
+[x] Player returns to the bed they slept in.
+[x] Basic /dream enter and /dream exit debug commands exist.
+[x] Cross-dimensional teleport works.
+[x] Integrated-server testing completed successfully.
 
 
 SPRINT 2 — DREAM LIFECYCLE HARDENING
@@ -60,126 +119,62 @@ STATUS: COMPLETE
 
 Goal
 ----
-Turn the Sprint 1 prototype into a reliable Dream lifecycle with:
-
-- one shared entry/exit system
-- persistent Dream sessions
-- safe Dream entry
-- correct vanilla sleep validation
-- normal vanilla sleeping when Dream activation is disabled
-
-
-Current Dream Flow
-------------------
-
-DREAM ACTIVATION DISABLED
-
-Player uses bed
-↓
-Dream mod does nothing
-↓
-Vanilla Minecraft handles sleeping normally
-
-
-DREAM ACTIVATION ENABLED
-
-Player uses bed
-↓
-Vanilla evaluates whether sleeping is allowed
-↓
-If vanilla rejects sleep:
-    Dream does not start
-
-If vanilla accepts sleep:
-    Player briefly enters valid vanilla sleep
-    ↓
-    Vanilla sleep stats / advancement behavior occurs
-    ↓
-    Dream mod stops normal sleep
-    ↓
-    DreamService.enterDream(...)
-    ↓
-    Player enters dream:dream
-
+Turn the prototype into a reliable shared Dream lifecycle.
 
 Lifecycle
 ---------
-[x] One shared DreamService handles Dream entry
-[x] One shared DreamService handles waking
-[x] Bed-triggered Dreams and debug commands use the shared lifecycle
-[x] /dream enter uses the normal Dream entry lifecycle
-[x] /dream exit uses the normal Dream wake lifecycle
-[x] Manual /dream exit and timed wake behave identically
-[x] A player cannot begin a second Dream while already Dreaming
-[x] Wake-up reliably returns the player to the stored origin
-[x] Bed-triggered Dreams return the player to the bed they slept in
-[x] Dream sessions are keyed per player UUID
-
+[x] One shared DreamService handles Dream entry.
+[x] One shared DreamService handles waking.
+[x] Bed-triggered Dreams and debug commands use the shared lifecycle.
+[x] /dream enter uses the normal Dream entry lifecycle.
+[x] /dream exit uses the normal Dream wake lifecycle.
+[x] Manual /dream exit and timed wake behave identically.
+[x] A player cannot begin a second Dream while already Dreaming.
+[x] Wake-up reliably returns the player to the stored origin.
+[x] Bed-triggered Dreams return the player to the bed they slept in.
+[x] Dream sessions are keyed per player UUID.
 
 Dream Dimension
 ---------------
-[x] Dream entry uses a dynamically determined surface Y position
-[x] Beds cannot be used normally inside dream:dream
-[x] Beds intentionally explode inside dream:dream
-    Implementation: dream dimension type uses bed_works=false
-[x] Dream entry no longer uses the original hardcoded Y=80 spawn
-
+[x] Dream entry no longer uses the original hardcoded Y=80 spawn.
+[x] Beds cannot be used normally inside dream:dream.
+[x] Beds intentionally explode inside dream:dream.
+[x] Implementation is enforced by dream dimension type:
+        bed_works = false
 
 Vanilla Sleep Integration
 -------------------------
-[x] Vanilla determines whether the player is allowed to sleep
-[x] Daytime bed attempts do not start a Dream
-[x] Nearby hostile mobs prevent Dream entry
-[x] Other vanilla-invalid sleep attempts do not start a Dream
-[x] Successful vanilla sleep can transition into a Dream
-[x] Player is removed from the vanilla sleeping state before Dream entry
-[x] Dreaming does not accidentally trigger vanilla night skipping
-[x] Vanilla sleep advancement/stat behavior still occurs before teleportation
-[x] Vanilla sleeping remains available when Dream activation is disabled
-
+[x] Vanilla determines whether the player is allowed to sleep.
+[x] Daytime bed attempts do not start a Dream.
+[x] Nearby hostile mobs prevent Dream entry.
+[x] Other vanilla-invalid sleep attempts do not start a Dream.
+[x] Successful vanilla sleep can transition into a Dream.
+[x] Player is removed from the vanilla sleeping state before Dream entry.
+[x] Dreaming does not accidentally trigger vanilla night skipping.
+[x] Vanilla sleep advancement/stat behavior still occurs before teleportation.
+[x] Vanilla sleeping remains available when Dream activation is absent.
 
 Session Persistence
 -------------------
-[x] Dream session survives Save & Quit
-[x] Dream session survives integrated-server shutdown/restart
-[x] Dream session restores when the player logs back in inside dream:dream
-[x] /dream exit works after relogging
-[x] Automatic wake works after relogging
-[x] Remaining Dream duration is persisted
-[x] Remaining duration resumes instead of resetting to a full session
-[x] Persistent Dream data is cleared after waking
-[x] Debug countdown displays remaining Dream time in chat
+[x] Dream session survives Save & Quit.
+[x] Dream session survives integrated-server shutdown/restart.
+[x] Dream session restores when the player logs back in inside dream:dream.
+[x] /dream exit works after relogging.
+[x] Automatic wake works after relogging.
+[x] Remaining Dream duration is persisted.
+[x] Remaining duration resumes instead of resetting.
+[x] Persistent Dream session data is cleared after waking.
+[x] Debug countdown displays remaining Dream time in chat.
 
-
-Current Timer Behavior
-----------------------
-Current development Dream duration:
-    20,000 ticks
-    1,000 seconds
-    approximately 16 minutes 40 seconds
-
-This value is currently hardcoded and is a development/testing value,
-not the final gameplay duration.
-
-Current offline behavior:
-    Dream time pauses while the player/server is offline.
-
-Possible future behavior:
-    Store an absolute world/server game-time deadline so Dream time
-    continues progressing while offline.
-
-
-Regression Testing
-------------------
-[x] Existing Sprint 1 functionality still works
-[x] No crashes during normal Dream entry
-[x] No crashes during timed wake
-[x] No crashes during /dream exit
-[x] No crashes during invalid or blocked sleep attempts
-[x] Vanilla sleeping works normally when Dream activation is disabled
-[x] Dream sleeping works normally when Dream activation is enabled
-[x] Session persistence works across Save & Quit
-
+Regression
+----------
+[x] Normal Dream entry works.
+[x] Timed wake works.
+[x] /dream exit works.
+[x] Invalid/blocked sleep attempts do not crash.
+[x] Vanilla sleep works when Dream activation is absent.
+[x] Dream sleep works when Dream activation is present.
+[x] Session persistence works across Save & Quit.
 
 
 SPRINT 3 — DREAM ACTIVATION / DREAM ANCHOR
@@ -188,633 +183,105 @@ STATUS: COMPLETE
 
 Goal
 ----
-Replace the temporary global activation boolean with an intentional
-in-world mechanism so individual beds can opt into Dream gameplay
-without replacing normal Minecraft sleeping.
+Replace the temporary global activation flag with a local in-world
+Dream activation mechanism.
 
-
-Dream Anchor Prototype
-----------------------
-The current Dream Anchor is a custom registered block.
-
-Working presentation:
-    Gilded Pot
-
-Current development appearance:
-    Temporary amethyst-block model/texture
-
-The full Gilded Pot model, collision shape, sounds, storage behavior,
-and final assets are deferred to Sprint 4.
-
-
-Activation Rule
+Historical Note
 ---------------
-A bed is Dream-enabled when a Dream Anchor exists within 3 blocks
-of the bed.
-
-Dream activation is evaluated around the specific bed being used.
-
-The Anchor:
-- is not consumed
-- does not globally enable Dreaming
-- does not bypass vanilla sleep restrictions
-
-
-NO DREAM ANCHOR
-
-Player uses bed
-↓
-Dream activation check fails
-↓
-Dream mod does nothing
-↓
-Vanilla sleeping proceeds normally
-
-
-VALID DREAM ANCHOR
-
-Player uses bed
-↓
-Dream Anchor exists within activation radius
-↓
-Vanilla validates sleep normally
-↓
-If vanilla rejects sleep:
-    Dream does not start
-
-If vanilla accepts sleep:
-    Player enters valid vanilla sleep
-    ↓
-    Dream mod transitions player into Dream
-    ↓
-    Existing DreamService lifecycle handles entry, timer, persistence,
-    and wake behavior
-
+The prototype activation block was called Dream Anchor.
+Its final presentation is the Gilded Pot.
 
 Completed
 ---------
-[x] Define Dream Anchor activation rules
-[x] Introduce custom Dream Anchor block/item
-[x] Register Dream Anchor with Forge
-[x] Add basic block/item resources
-[x] Detect whether a bed has an eligible nearby Dream Anchor
-[x] Replace temporary DREAM_ACTIVATION_ENABLED boolean
-[x] No Anchor → completely vanilla sleep
-[x] Valid Anchor → successful vanilla sleep becomes Dream entry
-[x] Anchor activation is evaluated locally around each bed
-[x] Multiple beds behave independently according to Anchor proximity
-[x] Removing/moving the Anchor immediately changes bed behavior
-[x] Anchor is not consumed when entering a Dream
-[x] Vanilla daytime restriction still applies
-[x] Vanilla hostile-mob restriction still applies
-[x] Preserve all Sprint 2 lifecycle behavior
-[x] Regression-test Dream entry, wake, persistence, and normal sleep
-
-
-Deferred From Sprint 3
-----------------------
-- Final Gilded Pot model
-- Custom Gilded Pot collision/selection shape
-- Decorated-pot-style sounds
-- Storage functionality
-- Final Gilded Pot texture
-- Final drops/break behavior
-
-
-
-KNOWN ISSUES / TECHNICAL DEBT
-=============================
-
-Dream Spawn Damage
-------------------
-Current prototype spawning still depends on finding safe terrain around
-a predetermined Dream location.
-
-This will be replaced during Sprint 4 by persistent player-specific
-Dream regions and persistent personal spawn data.
-
-
-Player Death
-------------
-Player death while Dreaming may leave the DreamSession active.
-
-Future behavior must define:
-
-- whether death immediately ends the Dream
-- where the player respawns
-- whether Dream inventory/progression is lost
-- when persistent Dream data is cleared
-
-
-Return Position
----------------
-Current bed-triggered wake behavior works correctly using BlockPos.
-
-Possible future improvements if required:
-
-- vanilla-style safe bed wake positioning
-- exact X/Y/Z restoration for debug-command Dreams
-- yaw/pitch restoration
-- behavior when the original bed has been destroyed
-
-
-Dream Duration
---------------
-Dream duration is currently hardcoded.
-
-Future options:
-
-- configuration
-- gameplay-dependent duration
-- progression-dependent duration
-
-
-Offline Timer Semantics
------------------------
-Current behavior:
-    Dream timer pauses while offline.
-
-Future option:
-    Store an absolute world/server game-time deadline so Dream time
-    continues progressing while offline.
-
-
-Persistence Edge Cases
-----------------------
-Future handling may be required for:
-
-- corrupted persisted DreamSession data
-- missing origin dimensions
-- unavailable Dream dimension
-- unusual player lifecycle events
-- death while persistent Dream state exists
-
-
-
-DESIGN / FUTURE CONSIDERATIONS
-==============================
-
-Same-Night Dream Re-entry
--------------------------
-Future rule:
-
-After waking from a Dream, prevent that player from entering another
-Dream during the same Minecraft night.
-
-This primarily matters in multiplayer where another player may cause
-the night to continue instead of immediately advancing to morning.
-
-Exact "same night" semantics should be designed alongside future
-night-progression behavior.
-
-
-Night Progression
------------------
-Current behavior:
-
-- Dream time is always reported 12,000 ticks opposite the Overworld
-- If another player sleeps and advances Overworld time, Dream time
-  advances to the corresponding opposite point
-- A DreamSession timer is independent of the world day/night clock
-- Dreamers remain in the Dream until their own session ends
-
-Future questions:
-
-- Should completing a Dream ever skip the Overworld night?
-- Should waking advance Overworld time?
-- Should natural sunrise end an active Dream?
-- How should playersSleepingPercentage interact with Dreaming?
-
-
-Personal Dream Worlds
----------------------
-The Dream is one persistent shared Minecraft dimension:
-
-    dream:dream
-
-Players do not receive separate ServerLevel/dimension instances.
-
-Instead, each player owns one persistent personal region inside the
-shared Dream dimension.
-
-Each region:
-
-- is 25 x 25 chunks
-- is approximately 400 x 400 blocks
-- uses normal Overworld-style world generation
-- persists permanently between Dream visits
-- may be built in and modified by its owner
-- directly borders neighboring player regions
-- is logically inaccessible to other players at the beginning
-
-
-Dream Region Grid
------------------
-Personal Dream regions form a contiguous grid.
-
-Example:
-
-+---------+---------+---------+
-| Player A| Player B| Player C|
-| 25 x 25 | 25 x 25 | 25 x 25 |
-+---------+---------+---------+
-| Player D| Player E| Player F|
-| 25 x 25 | 25 x 25 | 25 x 25 |
-+---------+---------+---------+
-| Player G| Player H| Player I|
-| 25 x 25 | 25 x 25 | 25 x 25 |
-+---------+---------+---------+
-
-Each player permanently owns a grid coordinate:
-
-    gridX
-    gridZ
-
-Region assignments should remain stable across:
-
-- logout
-- Save & Quit
-- server restart
-- future Dream visits
-
-
-Region Allocation
------------------
-New player regions should be allocated outward from the existing
-Dream community rather than extending forever in only one direction.
-
-Preferred approach:
-    outward-growing / spiral grid allocation
-
-This keeps active player regions geographically clustered while
-preserving direct neighboring relationships.
-
-
-Terrain Continuity
-------------------
-All personal regions exist inside the same generated Dream dimension.
-
-This means normal terrain can continue naturally across boundaries:
-
-- rivers may cross between player regions
-- caves may continue beneath borders
-- mountain ranges may span multiple regions
-- biomes may naturally continue across regions
-
-The player ownership boundary is logical rather than a terrain seam.
-
-
-Dream Borders
--------------
-At the beginning of progression, players cannot cross the boundaries
-of their assigned 25 x 25 chunk Dream region.
-
-Borders should NOT permanently rely on physical bedrock/barrier walls.
-
-Instead, border behavior should remain an abstract gameplay rule so
-future technology can selectively permit interaction between neighbors.
-
-
-Future Border Technology
-------------------------
-As Dream technology progresses, neighboring players may eventually
-connect their regions across shared borders.
-
-Possible future connections include:
-
-- item transfer
-- Forge Energy / RF transfer
-- paired doors or gates
-- authorized player travel
-
-Early game:
-    borders are completely sealed
-
-Later game:
-    specific technologies may permit controlled interaction between
-    neighboring Dream regions.
-
-The physical Dream grid therefore becomes part of multiplayer
-progression rather than only an implementation detail.
-
-
-Multiplayer
------------
-- Dream sessions remain per-player
-- Each player owns one persistent Dream region
-- Regions directly border other player regions
-- Normal player movement across borders begins disabled
-- Other players may remain in the Overworld while someone Dreams
-- Future technology may connect neighboring Dream regions
-- Determine eventual night-skip behavior
-- Determine what happens when morning arrives during a Dream
-- Determine interaction with sleeping-percentage gamerules
-
-
-Dream Dungeon
--------------
-The personal Dream world is NOT the procedural dungeon.
-
-The procedural dungeon will be a separate later-game activity accessed
-from inside the player's persistent Dream region.
-
-Long-term direction:
-
-Personal Dream Region
-↓
-Player discovers or obtains a special Dream-world item
-↓
-Item creates / activates a portal
-↓
-Portal leads to procedural Dream dungeon
-↓
-Dungeon provides dangerous progression-oriented content
-
-Potential dungeon features:
-
-- procedural rooms
-- Tartarus-style vertical/depth progression
-- encounter rooms
-- loot rooms
-- bosses
-- increasing difficulty
-- Apotheosis integration
-- regenerating or run-based layouts
-
-
-Progression
------------
-The persistent Dream world provides a foundation for long-term
-technology and progression.
-
-Potential systems include:
-
-- building and developing the personal Dream region
-- Dream-exclusive resources
-- Dream storage and infrastructure
-- technology that transfers limited items to/from the Overworld
-- cross-border item transfer between neighboring Dream regions
-- cross-border Forge Energy / RF networks
-- Dream gates/doors between neighboring players
-- dungeon access technology
-- dungeon-exclusive loot
-- increasing dungeon difficulty
-- Apotheosis integration
-
-
-Failure States
---------------
-Future handling required for:
-
-- player death while Dreaming
-- disconnect while Dreaming
-- server restart while Dreaming
-- original bed destroyed while Dreaming
-- origin chunk unloaded
-- origin dimension unavailable
-- Dream dimension unavailable
-- invalid/corrupted DreamSession data
-- invalid/corrupted DreamWorldSavedData
-- missing personal Dream region assignment
-- unsafe personal Dream spawn
-
-
-Configuration
--------------
-Eventually configurable:
-
-- Dream duration
-- Dream activation requirements
-- personal Dream region size
-- inventory transfer rules
-- multiplayer behavior
-- difficulty scaling
-- reward scaling
-- Dream re-entry restrictions
-
+[x] Define local Dream activation rules.
+[x] Introduce a custom activation block/item.
+[x] Register activation block/item with Forge.
+[x] Detect activation around the specific bed being used.
+[x] Remove the temporary global activation boolean.
+[x] No activation block -> vanilla sleep.
+[x] Valid activation block -> accepted vanilla sleep becomes Dream entry.
+[x] Multiple beds behave independently.
+[x] Moving/removing the activation block immediately changes behavior.
+[x] Activation block is not consumed.
+[x] Vanilla daytime restriction still applies.
+[x] Vanilla hostile-mob restriction still applies.
+[x] Preserve Sprint 2 lifecycle behavior.
+[x] Regression-test entry, wake, persistence, and normal sleep.
 
 
 SPRINT 4 — PERSONAL DREAM WORLD + GILDED POT
 =============================================
 STATUS: IN PROGRESS
 
-Goal
-----
-Build permanent player-owned Dream regions on top of the now-working
-persistent Overworld-style dream:dream dimension, then finish the
-Gilded Pot presentation/storage implementation when its final assets
-are ready.
+Sprint 4 is not complete until every remaining unchecked item in this section
+is either completed or explicitly moved to a later sprint with a documented
+reason.
 
 
-Current Work Order
-------------------
-[x] Normal Overworld-style Dream generation
-[x] Distinct deterministic Dream seed
-[x] Dream clock offset 12,000 ticks from the Overworld
-[x] Server daylight behavior follows the inverted Dream clock
-[x] Verify daylight-sensitive mobs use Dream daylight correctly
+PART 1 — PERSONAL DREAM REGIONS
+===============================
 
-[x] Create DreamRegion data model
-[x] Create global DreamWorldSavedData
-[x] Persist UUID -> DreamRegion assignments
-[x] Allocate distinct multiplayer regions
-[x] Verify assignment survives Save & Quit
-[x] Verify assignment survives full server restart
-[x] Verify multiple players retain their own region
-[x] Implement outward-growing / square-spiral region allocation
-[x] Derive 25 x 25 chunk bounds from grid coordinates
-[x] Assign and persist a safe personal Dream spawn
-[x] Replace global X=0 / Z=0 Dream spawn
-[x] Enforce logical region borders
-Dream Region Borders
---------------------
-[x] Define precise geometric region boundaries
-[x] Implement server-side player movement enforcement
-[x] Prevent block break/place/use across foreign borders
-[x] Sync active region bounds to the client
-[x] Render client-side Dream boundary planes
-[x] Add animated portal-style Dream border texture
-[x] Add distance-based border visibility/fade
-[x] Verify shared borders render correctly for adjacent players
-[x] Verify border rendering does not materially hurt performance
-[x] Final border multiplayer/regression test
-------------------
-[x] Multiplayer/regression-test region ownership and persistence
-[x] Finish Gilded Pot once final model/assets are ready
-
-PART 1 — PERSONAL DREAM WORLD
-=============================
-
-Goal
-----
-Partition the existing persistent shared Dream dimension into permanent,
-player-owned regions arranged in a contiguous multiplayer grid.
-
-
-Core Design
------------
-The mod continues to use one persistent dimension:
-
-    dream:dream
-
-Players do NOT receive separate ServerLevel instances.
-
-Instead, each player owns one permanent region inside the shared
-Dream dimension.
-
-Region size for Sprint 4:
-
-    25 x 25 chunks
-    400 x 400 blocks
-
-The region size remains a fixed implementation constant during Sprint 4.
-Do not make it configurable yet; changing region size after assignments
-exist requires migration semantics.
-
-Regions directly border one another so terrain remains continuous across
-ownership boundaries.
-
-
-Target Flow
------------
-
-Player enters Dream
-↓
-Load DreamWorldSavedData from dream:dream
-↓
-Look up UUID -> DreamRegion
-↓
-If player has no region:
-    allocate next unused grid cell
-    ↓
-    create DreamRegion(gridX, gridZ)
-    ↓
-    derive region chunk/block bounds
-    ↓
-    resolve a safe spawn near the region center
-    ↓
-    persist assignment and spawn
-↓
-If player already owns a region:
-    reuse the existing DreamRegion and spawn
-↓
-Teleport player to personal Dream spawn
-↓
-Player explores/builds/modifies persistent terrain
-↓
-Logical border rules prevent unauthorized region crossing
-↓
-Dream timer expires
-↓
-Existing wake lifecycle returns player to the Overworld
-↓
-Dream terrain and region ownership remain unchanged for the next visit
-
-
-Dream Dimension Foundation
---------------------------
-[x] Replace flat Dream generator with normal Overworld-style generation
-[x] Preserve custom dream:dream dimension type
-[x] Preserve bed_works=false
-[x] Generate normal Overworld terrain
-[x] Generate normal biomes
-[x] Generate caves
-[x] Generate ores
-[x] Give dream:dream a deterministic seed distinct from the Overworld
-[x] Offset Dream time by 12,000 ticks from the Overworld
-[x] Make server daylight behavior follow the inverted Dream clock
-[x] Verify daylight-sensitive mobs behave correctly
-[x] Verify terrain persists between Dream visits
-[x] Verify terrain naturally continues across future player borders
-
+Dream World Foundation
+----------------------
+[x] Replace flat Dream generator with normal Overworld-style generation.
+[x] Preserve custom dream:dream dimension type.
+[x] Preserve bed_works=false.
+[x] Generate normal Overworld terrain.
+[x] Generate normal biomes.
+[x] Generate caves.
+[x] Generate ores.
+[x] Generate normal structures.
+[x] Give dream:dream a deterministic seed distinct from the Overworld.
+[x] Offset Dream time by 12,000 ticks.
+[x] Make server daylight behavior follow the inverted Dream clock.
+[x] Verify daylight-sensitive mobs behave correctly.
+[x] Verify Dream terrain persists.
+[x] Verify terrain generation can continue naturally across region borders.
 
 DreamRegion
 -----------
-DreamRegion is the permanent value object describing one player's
-territory.
-
-The UUID association is stored by DreamWorldSavedData as the map key,
-so DreamRegion does not need to redundantly store the UUID itself.
-
-Persisted fields:
-
-[ ] gridX
-[ ] gridZ
-[ ] personal Dream spawn position
-
-Derived fields / helper values:
-
-[ ] minimum chunk X
-[ ] maximum chunk X
-[ ] minimum chunk Z
-[ ] maximum chunk Z
-[ ] minimum block X
-[ ] maximum block X
-[ ] minimum block Z
-[ ] maximum block Z
-[ ] region center coordinates
-
-Bounds must be derived from grid coordinates and the fixed region size,
-not separately persisted.
-
-Required formulas:
-
-    REGION_SIZE_CHUNKS = 25
-    REGION_SIZE_BLOCKS = 400
-
-    minChunkX = gridX * REGION_SIZE_CHUNKS
-    maxChunkX = minChunkX + REGION_SIZE_CHUNKS - 1
-
-    minChunkZ = gridZ * REGION_SIZE_CHUNKS
-    maxChunkZ = minChunkZ + REGION_SIZE_CHUNKS - 1
-
-    minBlockX = minChunkX * 16
-    maxBlockX = ((maxChunkX + 1) * 16) - 1
-
-    minBlockZ = minChunkZ * 16
-    maxBlockZ = ((maxChunkZ + 1) * 16) - 1
-
-These formulas must work identically for positive and negative grid
-coordinates.
-
+[x] DreamRegion data model exists.
+[x] Persist gridX.
+[x] Persist gridZ.
+[x] Persist personal Dream spawn.
+[x] Derive minimum chunk X.
+[x] Derive maximum chunk X.
+[x] Derive minimum chunk Z.
+[x] Derive maximum chunk Z.
+[x] Derive minimum block X.
+[x] Derive maximum block X.
+[x] Derive minimum block Z.
+[x] Derive maximum block Z.
+[x] Derive region center coordinates.
+[x] Region math works for positive and negative grid coordinates.
+[x] Bounds are derived rather than redundantly persisted.
 
 DreamWorldSavedData
 -------------------
-Create one global SavedData object for Dream region ownership.
-
-Purpose:
-
-    UUID -> DreamRegion
-
-DreamWorldSavedData is separate from DreamSession:
-
-DreamSession:
-    temporary information about one current Dream visit
-
-DreamWorldSavedData:
-    permanent ownership/spawn information for the shared Dream world
-
-Planned behavior:
-
-[ ] Store one UUID -> DreamRegion mapping
-[ ] Load/save through Minecraft SavedData
-[ ] Attach the data to the dream:dream level's DataStorage
-[ ] Mark data dirty only when assignments/spawns change
-[ ] Persist independently of active DreamSession state
-[ ] Include a small data/schema version for future migrations
-[ ] Reuse the same assignment forever unless explicitly migrated/reset
-
-Do NOT persist a separate occupied-cell list unless it becomes necessary.
-Occupied cells can be derived from the current UUID -> DreamRegion map,
-which avoids duplicate persistent state.
-
+[x] One global UUID -> DreamRegion mapping exists.
+[x] SavedData loads/saves through Minecraft DataStorage.
+[x] SavedData is attached to dream:dream.
+[x] Assignment changes mark SavedData dirty.
+[x] Spawn changes mark SavedData dirty.
+[x] DreamWorldSavedData is independent from DreamSession.
+[x] Data schema version exists.
+[x] Existing assignments are reused permanently.
+[x] Occupied cells are derived from the UUID -> DreamRegion map.
+[x] No duplicate persisted occupied-cell list exists.
 
 Region Allocation
 -----------------
-New players receive the next unused grid cell in an outward-growing
-square spiral centered at (0, 0).
+[x] First player receives grid (0, 0).
+[x] New regions do not overlap.
+[x] Allocation grows outward using a square spiral.
+[x] Existing players reuse their permanent region.
+[x] Neighboring regions directly share borders.
+[x] Allocation survives Save & Quit.
+[x] Allocation survives full server restart.
+[x] Multiple players retain their own regions.
+[x] Future spiral assignments can be previewed without launching extra clients.
 
-Expected early allocation order:
+Expected sequence begins:
 
     1:  ( 0,  0)
     2:  ( 1,  0)
@@ -826,226 +293,362 @@ Expected early allocation order:
     8:  ( 0, -1)
     9:  ( 1, -1)
     10: ( 2, -1)
-    ...
-
-Requirements:
-
-[ ] First player receives grid (0, 0)
-[ ] Allocate new regions without overlap
-[ ] Allocation grows outward instead of only along one axis
-[ ] Reuse an existing player's region permanently
-[ ] Neighboring cells directly share borders
-[ ] Allocation remains correct with missing/deleted player accounts
-[ ] Assignment survives Save & Quit
-[ ] Assignment survives full server restart
-
 
 Personal Dream Spawn
 --------------------
-Initial spawn should be resolved inside the player's own region, near
-the region center.
+[x] Global X=0 / Z=0 spawn removed.
+[x] Personal spawn is stored in DreamWorldSavedData.
+[x] Existing personal spawn is reused on future visits.
+[x] Spawn is constrained to the player's own region.
+[x] Ocean-center regression case was reproduced.
+[x] Old full-region dry-land search was identified as incorrect design.
+[x] Old search could synchronously touch up to the entire 25 x 25 region.
+[x] Region ownership is now independent of terrain quality.
+[x] Spawn X/Z is currently anchored to the exact region center.
+[x] Center chunk is loaded/generated for first spawn.
+[x] Natural center terrain is preserved when already safe.
+[x] Unsafe center receives a temporary minimal 3 x 3 stone platform.
+[x] Player feet/head space is cleared above the fallback platform.
+[x] Ocean-center Player A case can enter Dream with the fallback.
+[ ] Verify the newly created fallback spawn survives a full server restart.
 
-First-pass approach:
+Current spawn rule:
 
-[ ] Calculate center X/Z from DreamRegion
-[ ] Use terrain height information to find the surface
-[ ] Require a solid floor and enough air for the player
-[ ] Avoid obvious fluid/lava hazards
-[ ] Persist the resolved BlockPos
-[ ] Reuse the persisted spawn on future visits
-[ ] Stop using global X=0 / Z=0
-[ ] Never place a player's spawn outside their own region
+    region assignment is authoritative
+    ↓
+    terrain does not reroll ownership
+    ↓
+    exact center is used as the arrival location
+    ↓
+    unsafe center receives temporary safety construction
+    ↓
+    resulting BlockPos is persisted
 
-Later hardening may revalidate/recover a spawn if terrain modification
-makes the saved position unsafe.
+IMPORTANT:
+The 3 x 3 stone platform is intentionally temporary and is not the final
+gameplay answer for ocean-heavy/resource-starved Dream regions.
 
+Future Terrain Viability Research
+---------------------------------
+[ ] Theorycraft minimum viable Dream-region generation requirements.
+[ ] Decide whether a region must contain at least one safe natural spawn.
+[ ] Decide whether a region must contain at least one tree / renewable wood.
+[ ] Decide whether basic early-game resources need minimum guarantees.
+[ ] Evaluate deterministic per-region seed rerolling.
+[ ] Determine how candidate region seeds would be derived reproducibly.
+[ ] Evaluate terrain seams caused by per-region seed differences.
+[ ] Decide whether better Dream playability is worth imperfect border continuity.
 
-Dream Boundaries
-----------------
-Ownership boundaries are gameplay rules, not terrain seams.
+Candidate future approach:
 
-[ ] Detect when a Dreaming player leaves their assigned block bounds
-[ ] Prevent unauthorized movement into another region
-[ ] Correctly handle all four edges and corners
-[ ] Avoid permanent bedrock/barrier walls
-[ ] Keep authorization logic separate from raw coordinate math
-[ ] Keep border behavior extensible for future gates/technology
+    permanent grid cell is allocated
+    ↓
+    generate candidate region using deterministic candidate seed
+    ↓
+    evaluate region viability
+    ↓
+    reroll candidate seed if viability fails
+    ↓
+    accept first viable generation
 
-A later border-access service should be able to answer whether a
-specific crossing/action is authorized rather than hardcoding
-"borders are always closed" throughout unrelated systems.
+This is only a design candidate. It is NOT current behavior.
 
+Dream Borders — Server Authority
+--------------------------------
+[x] Precise region geometric boundaries exist.
+[x] Player movement is enforced server-side.
+[x] All four borders are enforced.
+[x] Corners are handled.
+[x] Player bounding-box width is considered.
+[x] Player is clamped back to the legal region instead of teleported to spawn.
+[x] Velocity through the crossed border component is canceled.
+[x] Movement parallel to a border remains possible.
+[x] Permanent bedrock/barrier walls are not used.
+[x] Authorization logic is separated into DreamRegionAccessService.
+[x] Architecture remains extensible for future gates/permissions.
 
-Persistence
------------
-[ ] Dream terrain modifications persist
-[ ] Player-built structures persist
-[ ] Containers persist
-[ ] DreamWorldSavedData persists independently of DreamSession
-[ ] Region ownership persists across logout
-[ ] Region ownership persists across Save & Quit
-[ ] Region ownership persists across full server restart
-[ ] Personal Dream spawn persists across full server restart
+Dream Borders — Interaction Protection
+--------------------------------------
+[x] Prevent breaking blocks in foreign regions.
+[x] Prevent placing blocks in foreign regions.
+[x] Prevent right-click block interaction in foreign regions.
+[x] Server-side BreakEvent remains authoritative.
+[x] Left-click cancellation prevents misleading client mining behavior.
 
+Dream Borders — Rendering
+-------------------------
+[x] Client-side boundary planes render inside dream:dream.
+[x] Current 400 x 400 grid cell is derived client-side from player position.
+[x] Negative grid coordinates use correct floor division.
+[x] Border renderer uses the animated vanilla Nether portal sprite as source.
+[x] Custom Dream shader removes the original purple coloration.
+[x] Dream border uses teal/cyan Dream palette.
+[x] Border opacity fades by distance.
+[x] Border is visible from both sides.
+[x] Border does not write to the depth buffer.
+[x] Terrain can still occlude the border.
+[x] Rendering is limited to nearby wall sections.
+[x] Adjacent players can see one another across the visual border.
+[x] Multiplayer border rendering was regression-tested.
 
-Debug / Validation Support
---------------------------
-Keep development visibility while the region system is being built.
+Important correction:
+There is currently no explicit ownership/bounds synchronization packet to the
+client. The renderer derives the player's current 400 x 400 grid cell locally.
+Server-side SavedData and access enforcement remain authoritative.
 
-Recommended temporary/debug support:
+Persistence / Multiplayer Validation
+------------------------------------
+[x] DreamWorldSavedData persists independently of DreamSession.
+[x] Region ownership persists across logout.
+[x] Region ownership persists across Save & Quit.
+[x] Region ownership persists across full server restart.
+[x] Personal Dream spawn persistence is implemented.
+[x] Previously assigned personal spawn survives restart.
+[x] Player A receives (0, 0).
+[x] Player B receives the next distinct region.
+[x] Regions do not overlap.
+[x] Adjacent block bounds touch exactly.
+[x] Player A cannot normally enter Player B's region.
+[x] Player B cannot normally enter Player A's region.
+[x] Players cannot break/place/use blocks in another player's region.
+[x] Each player's DreamSession remains independent.
+[x] Region assignments remain identical after restart.
+[ ] Verify the new ocean/platform fallback spawn after full restart.
 
-[ ] Add `/dream region` or equivalent debug output
-[ ] Print player's gridX/gridZ
-[ ] Print chunk bounds
-[ ] Print block bounds
-[ ] Print stored personal spawn
-
-This makes off-by-one and persistence bugs visible before border
-enforcement is added.
-
-
-Multiplayer Validation
-----------------------
-[ ] Player A receives grid (0, 0)
-[ ] Player B receives the next distinct grid cell
-[ ] Additional players follow the intended spiral order
-[ ] Regions never overlap
-[ ] Adjacent regions have directly touching block bounds
-[ ] Both regions use continuous terrain generation
-[ ] Player A cannot normally enter Player B's region
-[ ] Player B cannot normally enter Player A's region
-[ ] Each player's DreamSession remains independent
-[ ] Each player consistently returns to their own persistent spawn
-[ ] Region assignments remain identical after server restart
-
-
-Regression Testing
-------------------
-[ ] Dream Anchor activation still works during Part 1
-[ ] No Dream Anchor still produces vanilla sleep
-[ ] Vanilla sleep restrictions still work
-[ ] Timed Dream wake still works
-[ ] `/dream enter` still works
-[ ] `/dream exit` still works
-[ ] DreamSession persistence still works
-[ ] Beds still explode inside dream:dream
-[ ] Dream seed remains distinct from Overworld
-[ ] Dream time remains 12,000 ticks opposite Overworld
-[ ] Daylight-sensitive mobs still follow Dream daylight
-[ ] Save & Quit inside the Dream still works
-
-
-Future Border Compatibility
+Debug / Validation Commands
 ---------------------------
-Sprint 4 does NOT implement cross-border technology.
-
-However, region/border architecture must avoid preventing later:
-
-- item transfer
-- Forge Energy / RF transfer
-- fluid transfer
-- redstone/signal transfer if desired
-- paired doors/gates
-- controlled player travel
-- neighbor authorization/permissions
+[x] /dream enter exists.
+[x] /dream exit exists.
+[x] /dream region exists.
+[x] /dream region prints grid coordinates.
+[x] /dream region prints chunk bounds.
+[x] /dream region prints block bounds.
+[x] /dream region prints center coordinates.
+[x] /dream region prints stored spawn.
+[x] /dream region spawn exists.
+[x] /dream region testspiral exists.
+[x] Spiral preview does not modify SavedData.
 
 
 PART 2 — GILDED POT
 ===================
 
-Goal
-----
-Turn the current placeholder Dream Anchor into the Gilded Pot.
+Current Final Presentation
+--------------------------
+[x] Registry ID is dream:gilded_pot.
+[x] Final custom Blockbench model is imported.
+[x] Final single 32 x 32 texture is imported.
+[x] Model is centered in Minecraft block space.
+[x] Block/item model resources render in-game.
+[x] Gilded Pot places correctly.
+[x] Gilded Pot activates nearby beds within 3 blocks.
+[x] Final model was regression-tested with Dream entry.
+[x] Gilded Pot does not change vanilla sleep validation.
+
+Remaining Gilded Pot Work
+-------------------------
+[ ] Create dedicated GildedPotBlock class.
+[ ] Define custom collision/selection shape matching the final model.
+[ ] Add decorated-pot-style placement sound.
+[ ] Add decorated-pot-style break sound.
+[ ] Define final breaking behavior.
+[ ] Define final item drops.
+[ ] Add storage functionality.
+[ ] Decide storage capacity.
+[ ] Define behavior for stored contents when the pot is broken.
+
+Sprint 4 Completion Gate
+------------------------
+Sprint 4 is complete only when:
+
+[x] New ocean/platform fallback spawn survives full restart.
+[ ] Gilded Pot custom collision/selection shape is implemented.
+[ ] Gilded Pot sounds are implemented.
+[ ] Gilded Pot break/drop behavior is implemented.
+[ ] Gilded Pot storage behavior is implemented.
+[ ] Final Sprint 4 multiplayer/regression pass succeeds.
 
 
-Planned Work
+KNOWN ISSUES / TECHNICAL DEBT
+=============================
+
+Player Death
 ------------
-[ ] Import final custom Gilded Pot model
-[ ] Add final Gilded Pot texture
-[ ] Define custom block collision/selection shape
-[ ] Add appropriate placement sound
-[ ] Add decorated-pot-style break sound
-[ ] Define breaking behavior
-[ ] Define item drops
-[ ] Add storage functionality
-[ ] Decide initial storage capacity
-[ ] Ensure stored contents behave correctly when the block is broken
-[ ] Preserve existing 3-block Dream activation behavior
+[ ] Define player death behavior while Dreaming.
+[ ] Prevent stale DreamSession after death.
+[ ] Define respawn behavior after death in dream:dream.
+[ ] Decide Dream inventory/progression loss semantics.
 
+Return Position
+---------------
+Current:
+[x] Bed-triggered wake returns to stored bed BlockPos.
 
-Design Intent
+Possible future improvements:
+[ ] Vanilla-style safe bed wake positioning.
+[ ] Exact X/Y/Z restoration for debug-command Dreams.
+[ ] Yaw/pitch restoration.
+[ ] Defined behavior when original bed is destroyed.
+
+Dream Duration
+--------------
+Current:
+[x] Development duration is hardcoded to 20,000 ticks.
+
+Future:
+[ ] Configuration.
+[ ] Gameplay-dependent duration.
+[ ] Progression-dependent duration.
+
+Offline Timer
 -------------
-The Gilded Pot serves two purposes:
+Current:
+[x] Dream time pauses while the player/server is offline.
 
-1. Dream Anchor
-   - enables Dream entry for nearby beds
+Future option:
+[ ] Decide whether Dream time should continue while offline.
 
-2. Storage block
-   - functions as a useful physical object outside the Dream mechanic
+Persistence Edge Cases
+----------------------
+[ ] Corrupted DreamSession recovery.
+[ ] Corrupted DreamWorldSavedData recovery.
+[ ] Missing origin dimension behavior.
+[ ] Missing Dream dimension behavior.
+[ ] Missing personal region recovery.
 
-Dream activation logic should remain separate from the Gilded Pot's
-presentation and storage implementation wherever practical.
-
-
-NOT PART OF SPRINT 4
-====================
-
-- Procedural Dream dungeon
-- Dungeon portal/item
-- Cross-border item transfer
-- Cross-border RF transfer
-- Cross-border doors
-- Authorized player border travel
-- Dream/Overworld item-transfer technology
-- Endless Tartarus-style floors
-- Final enemy spawning system
-- Final loot system
-- Apotheosis integration
-- Boss encounters
-- Night-skip behavior
-- Same-night re-entry restriction
-- Final Dream duration/config system
+Repository Cleanup
+------------------
+[ ] Fix assets/dream/lang/en_us.json if it still contains multiple root objects.
+[ ] Remove obsolete dream_anchor resources after confirming no compatibility need.
+[ ] Rename DreamRegionAllocater.kt to DreamRegionAllocator.kt.
+[ ] Align DreamRegionInteractionHandler.kt filesystem path with its declared package.
+[ ] Remove temporary spawn debug println statements after regression testing.
+[ ] Add permissions to debug commands before any public-server release.
+[ ] Update README after Sprint 4 is formally complete.
 
 
+FUTURE DESIGN CONSIDERATIONS
+============================
 
-FUTURE SPRINT DIRECTION
-=======================
+Same-Night Dream Re-entry
+-------------------------
+[ ] Decide whether a player can re-enter Dream during the same Minecraft night.
 
-Likely progression:
+Night Progression
+-----------------
+[ ] Decide whether finishing a Dream should advance Overworld time.
+[ ] Decide whether natural sunrise should end active Dreams.
+[ ] Decide interaction with playersSleepingPercentage.
 
-SPRINT 5
---------
-Personal Dream region hardening / early Dream-world gameplay
+Future Border Technology
+------------------------
+[ ] Neighbor discovery.
+[ ] Cross-border item transfer.
+[ ] Forge Energy / RF transfer.
+[ ] Fluid transfer.
+[ ] Optional redstone/signal transfer.
+[ ] Paired doors/gates.
+[ ] Neighbor permissions.
+[ ] Authorized player travel.
 
-Potential focus:
-- resource balance
-- persistent building
-- Dream-specific materials
-- Dream/Overworld progression hooks
-- safer spawn recovery
-- player death behavior
+Dream Dungeon
+-------------
+The personal Dream region is NOT the procedural dungeon.
+
+Future direction:
+
+    Personal Dream Region
+    ↓
+    special Dream-world item
+    ↓
+    portal / dungeon entry mechanism
+    ↓
+    procedural Dream dungeon
+    ↓
+    progression-oriented encounters / loot / bosses
+
+Potential future work:
+[ ] Dungeon-enabling item.
+[ ] Portal generation.
+[ ] Separate procedural dungeon space.
+[ ] Reusable room templates.
+[ ] Room connections.
+[ ] Depth/floor tracking.
+[ ] Encounter rooms.
+[ ] Loot rooms.
+[ ] Increasing difficulty.
+[ ] Repeatable dungeon runs.
+[ ] Boss encounters.
+[ ] Apotheosis integration.
 
 
-LATER SPRINT — BORDER TECHNOLOGY
---------------------------------
-Potential focus:
-- neighboring region discovery
-- item transfer across borders
-- Forge Energy / RF transfer
-- paired border doors
-- permission/authorization system
+SPRINT 5 — NOT STARTED
+======================
+Planned first tooling task after Sprint 4:
+------------------------------------------
+[ ] Add a Dream region map/debug item.
+[ ] Creative/command-only initially.
+[ ] Print a local ASCII allocation map.
+[ ] "." = unallocated region.
+[ ] "O" = allocated region.
+[ ] "X" = current player's region.
+[ ] Include current grid coordinate.
+[ ] Later consider player-name / UUID lookup.
+
+Potential Sprint 5 gameplay direction:
+--------------------------------------
+[ ] Personal-region hardening.
+[ ] Persistent-building gameplay.
+[ ] Dream-specific materials.
+[ ] Dream/Overworld progression hooks.
+[ ] Resource balance.
+[ ] Safer spawn recovery.
+[ ] Player death behavior.
+[ ] Revisit ocean/resource-starved Dream generation policy.
 
 
-LATER SPRINT — DREAM DUNGEON
-----------------------------
-Potential focus:
-- dungeon-enabling item
-- portal generation
-- separate procedural dungeon space
-- reusable room templates
-- room connections
-- depth/floor tracking
-- encounter rooms
-- loot rooms
-- increasing difficulty
-- repeated dungeon runs
+CURRENT SOURCE-OF-TRUTH SNAPSHOT
+================================
+
+Dimension:
+    dream:dream
+    Overworld-style generation
+    custom deterministic Dream seed
+    +12,000 reported time offset
+    matching server daylight semantics
+    bed_works=false
+
+Region:
+    25 x 25 chunks
+    400 x 400 blocks
+    UUID -> DreamRegion SavedData
+    square-spiral allocation
+    permanent ownership
+    server-enforced borders
+
+Current first-spawn policy:
+    exact region-center X/Z
+    natural center if safe
+    otherwise temporary 3 x 3 stone safety platform
+    persisted BlockPos
+    no terrain-based ownership reroll
+
+Current border rendering:
+    locally derived current grid cell
+    animated vanilla portal source texture
+    custom teal/cyan Dream shader
+    distance fade
+
+Current activation block:
+    dream:gilded_pot
+    3-block activation radius
+    vanilla sleep validation remains authoritative
+
+Current major unfinished Sprint 4 work:
+    fallback-spawn restart regression
+    Gilded Pot collision
+    Gilded Pot sounds
+    Gilded Pot break/drop semantics
+    Gilded Pot storage
+    final Sprint 4 regression pass
+

@@ -3,22 +3,27 @@ package dev.yen.dream.world.region
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.levelgen.Heightmap
 
 object DreamSpawnResolver {
     /**
-     * Finds a safe spawn position near the center of a player's region.
+     * Resolves a permanent spawn at the exact horizontal center
+     * of the player's assigned Dream region.
      *
-     * We start at the exact region center and search outward in square
-     * rings until a usable surface position is found.
+     * Region assignment is intentionally terrain-agnostic.
      *
-     * This only runs when a player receives their Dream spawn for the
-     * first time. The resulting BlockPos is then persisted permanently.
+     * We do NOT search elsewhere for nicer terrain and we do NOT
+     * reject or reroll regions because their center happens to be
+     * ocean, lava, forest, mountain, etc.
+     *
+     * If the natural center position is unsafe, we create a small
+     * artificial arrival platform there instead.
      */
     fun findSafeSpawn(
         dreamLevel: ServerLevel,
         region: DreamRegion,
-    ): BlockPos? {
+    ): BlockPos {
         val centerX =
             region.centerBlockX
 
@@ -26,152 +31,110 @@ object DreamSpawnResolver {
             region.centerBlockZ
 
         /*
-         * Search outward from the center.
+         * Only the chunk containing the region center needs to exist.
          *
-         * 25 chunks = 400 blocks, so a radius of 200 is enough to
-         * inspect the entire region from its center. containsBlock()
-         * prevents us from accidentally searching a neighboring region.
-         */
-        val maximumRadius =
-            DreamRegion.REGION_SIZE_BLOCKS / 2
-
-        for (radius in 0..maximumRadius) {
-            /*
-             * Radius zero is just the center coordinate.
-             */
-            if (radius == 0) {
-                findSafePosition(
-                    dreamLevel,
-                    region,
-                    centerX,
-                    centerZ,
-                )?.let { spawnPos ->
-                    return spawnPos
-                }
-
-                continue
-            }
-
-            /*
-             * NORTH AND SOUTH EDGES
-             *
-             * Scan both horizontal edges of the current square ring.
-             */
-            for (x in centerX - radius..centerX + radius) {
-                findSafePosition(
-                    dreamLevel,
-                    region,
-                    x,
-                    centerZ - radius,
-                )?.let { spawnPos ->
-                    return spawnPos
-                }
-
-                findSafePosition(
-                    dreamLevel,
-                    region,
-                    x,
-                    centerZ + radius,
-                )?.let { spawnPos ->
-                    return spawnPos
-                }
-            }
-
-            /*
-             * WEST AND EAST EDGES
-             *
-             * The corners were already checked above, so skip them here.
-             */
-            for (z in centerZ - radius + 1 until centerZ + radius) {
-                findSafePosition(
-                    dreamLevel,
-                    region,
-                    centerX - radius,
-                    z,
-                )?.let { spawnPos ->
-                    return spawnPos
-                }
-
-                findSafePosition(
-                    dreamLevel,
-                    region,
-                    centerX + radius,
-                    z,
-                )?.let { spawnPos ->
-                    return spawnPos
-                }
-            }
-        }
-
-        /*
-         * This should be extremely unusual with normal Overworld terrain,
-         * but returning null lets the caller fail safely rather than
-         * teleporting the player somewhere invalid.
-         */
-        return null
-    }
-
-    /**
-     * Tests one X/Z column for a safe standing position.
-     */
-    private fun findSafePosition(
-        dreamLevel: ServerLevel,
-        region: DreamRegion,
-        x: Int,
-        z: Int,
-    ): BlockPos? {
-        /*
-         * Never inspect terrain outside this player's region.
-         */
-        if (!region.containsBlock(x, z)) {
-            return null
-        }
-
-        /*
-         * A player's personal region may never have been visited before.
-         *
-         * Explicitly load/generate the chunk containing this candidate
-         * position before querying its heightmap and block states.
+         * The old resolver could synchronously inspect/generate much
+         * of the entire 25 x 25 chunk region while looking for land.
+         * That is unnecessary because terrain quality must never
+         * influence region ownership.
          */
         dreamLevel.getChunk(
-            x shr 4,
-            z shr 4,
+            centerX shr 4,
+            centerZ shr 4,
         )
 
         /*
-         * MOTION_BLOCKING_NO_LEAVES gives us the first standing position
-         * above normal terrain while avoiding tree leaves as the surface.
+         * WORLD_SURFACE gives us the first open position above the
+         * highest terrain or fluid at this exact X/Z coordinate.
+         *
+         * Examples:
+         *
+         * grass surface -> one block above grass
+         * ocean surface -> one block above water
+         * lava surface  -> one block above lava
          */
-        val y =
+        val surfaceY =
             dreamLevel.getHeight(
-                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                x,
-                z,
+                Heightmap.Types.WORLD_SURFACE,
+                centerX,
+                centerZ,
             )
 
+        /*
+         * Leave enough vertical room for:
+         *
+         * floor
+         * feet
+         * head
+         *
+         * The clamps are mostly defensive because normal Overworld
+         * generation should already keep us well inside these limits.
+         */
+        val spawnY =
+            surfaceY.coerceIn(
+                dreamLevel.minBuildHeight + 1,
+                dreamLevel.maxBuildHeight - 2,
+            )
+
+        val spawnPos =
+            BlockPos(
+                centerX,
+                spawnY,
+                centerZ,
+            )
+
+        /*
+         * If the exact center already has normal safe terrain,
+         * preserve it completely and simply use that position.
+         */
         if (
-            y <= dreamLevel.minBuildHeight ||
-            y >= dreamLevel.maxBuildHeight - 1
+            isSafeStandingPosition(
+                dreamLevel,
+                spawnPos,
+            )
         ) {
-            return null
+            return spawnPos
         }
 
-        val feetPos =
-            BlockPos(
-                x,
-                y,
-                z,
-            )
+        /*
+         * The exact center is not naturally safe.
+         *
+         * This can happen when the assigned region center contains:
+         *
+         * - ocean
+         * - river
+         * - lava
+         * - leaves
+         * - awkward generated terrain
+         *
+         * The region is still valid. We make the spawn valid instead
+         * of looking somewhere else.
+         */
+        createArrivalPlatform(
+            dreamLevel,
+            spawnPos,
+        )
 
+        return spawnPos
+    }
+
+    /**
+     * Checks whether the player can safely stand at the supplied
+     * position without modifying the terrain.
+     */
+    private fun isSafeStandingPosition(
+        dreamLevel: ServerLevel,
+        spawnPos: BlockPos,
+    ): Boolean {
         val headPos =
-            feetPos.above()
+            spawnPos.above()
 
         val groundPos =
-            feetPos.below()
+            spawnPos.below()
 
         val feetState =
             dreamLevel.getBlockState(
-                feetPos,
+                spawnPos,
             )
 
         val headState =
@@ -185,21 +148,18 @@ object DreamSpawnResolver {
             )
 
         /*
-         * The player's feet and head must have no collision geometry
-         * and must not contain a fluid.
-         *
-         * Using collision shapes instead of isAir also allows harmless
-         * vegetation such as grass.
+         * Feet and head require empty collision space and cannot
+         * contain water, lava, or another fluid.
          */
         val feetClear =
             feetState
                 .getCollisionShape(
                     dreamLevel,
-                    feetPos,
+                    spawnPos,
                 ).isEmpty &&
                 dreamLevel
                     .getFluidState(
-                        feetPos,
+                        spawnPos,
                     ).isEmpty
 
         val headClear =
@@ -214,8 +174,8 @@ object DreamSpawnResolver {
                     ).isEmpty
 
         /*
-         * There must be a solid upward-facing surface underneath the
-         * player, and that surface must not itself be submerged.
+         * Ground must actually support the player and must not
+         * itself be fluid.
          */
         val safeGround =
             groundState.isFaceSturdy(
@@ -228,14 +188,62 @@ object DreamSpawnResolver {
                         groundPos,
                     ).isEmpty
 
-        return if (
-            feetClear &&
+        return feetClear &&
             headClear &&
             safeGround
-        ) {
-            feetPos
-        } else {
-            null
+    }
+
+    /**
+     * Creates a minimal 3 x 3 safety platform centered on the
+     * permanent Dream spawn.
+     *
+     * This is a fallback only. Normal terrain remains untouched when
+     * the center already provides a valid standing position.
+     *
+     * A small platform guarantees that even an ocean or lava region
+     * remains a usable Dream region without changing its assignment.
+     */
+    private fun createArrivalPlatform(
+        dreamLevel: ServerLevel,
+        spawnPos: BlockPos,
+    ) {
+        val floorY =
+            spawnPos.y - 1
+
+        /*
+         * Build a 3 x 3 stone floor beneath the player.
+         *
+         * This is intentionally small: enough to guarantee a safe
+         * arrival without substantially replacing the generated terrain.
+         */
+        for (offsetX in -1..1) {
+            for (offsetZ in -1..1) {
+                val floorPos =
+                    BlockPos(
+                        spawnPos.x + offsetX,
+                        floorY,
+                        spawnPos.z + offsetZ,
+                    )
+
+                dreamLevel.setBlockAndUpdate(
+                    floorPos,
+                    Blocks.STONE.defaultBlockState(),
+                )
+            }
         }
+
+        /*
+         * Guarantee two blocks of clear space at the actual spawn
+         * coordinate even if unusual terrain generation occupies it.
+         */
+        dreamLevel.setBlockAndUpdate(
+            spawnPos,
+            Blocks.AIR.defaultBlockState(),
+        )
+
+        dreamLevel.setBlockAndUpdate(
+            spawnPos.above(),
+            Blocks.AIR.defaultBlockState(),
+        )
     }
 }

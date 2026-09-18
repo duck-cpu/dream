@@ -82,21 +82,6 @@ object DreamRegionService {
                 dreamLevel,
                 region,
             )
-                ?: run {
-                    println(
-                        "[Dream Debug] Failed to resolve safe spawn " +
-                            "for ${player.gameProfile.name} " +
-                            "in region (${region.gridX}, ${region.gridZ}) " +
-                            "bounds X=${region.minBlockX}..${region.maxBlockX}, " +
-                            "Z=${region.minBlockZ}..${region.maxBlockZ}",
-                    )
-
-                    return null
-                }
-        println(
-            "[Dream Debug] Resolved spawn for ${player.gameProfile.name}: " +
-                spawnPos.toShortString(),
-        )
 
         val saved =
             worldData.setSpawn(
