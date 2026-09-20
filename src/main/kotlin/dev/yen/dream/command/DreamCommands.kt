@@ -1,6 +1,9 @@
 package dev.yen.dream.command
 
 import com.mojang.brigadier.CommandDispatcher
+import dev.yen.dream.progression.DreamProgressionCapability
+import dev.yen.dream.progression.DreamProgressionRealm
+import dev.yen.dream.progression.DreamProgressionService
 import dev.yen.dream.service.DreamService
 import dev.yen.dream.world.DreamDimensions
 import dev.yen.dream.world.region.DreamRegionAllocator
@@ -16,48 +19,79 @@ import net.minecraftforge.eventbus.api.SubscribeEvent
 object DreamCommands {
     @SubscribeEvent
     fun onRegisterCommands(event: RegisterCommandsEvent) {
-        register(event.dispatcher)
+        register(
+            event.dispatcher,
+        )
     }
 
     private fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands
-                .literal("dream")
-                .then(
+                .literal(
+                    "dream",
+                ).then(
                     Commands
-                        .literal("enter")
-                        .executes { context ->
+                        .literal(
+                            "enter",
+                        ).executes { context ->
                             enterDream(
                                 context.source.playerOrException,
                             )
                         },
                 ).then(
                     Commands
-                        .literal("exit")
-                        .executes { context ->
+                        .literal(
+                            "exit",
+                        ).executes { context ->
                             exitDream(
                                 context.source.playerOrException,
                             )
                         },
                 ).then(
                     Commands
-                        .literal("region")
-                        .executes { context ->
+                        .literal(
+                            "progression",
+                        ).then(
+                            Commands
+                                .literal(
+                                    "status",
+                                ).executes { context ->
+                                    showProgressionStatus(
+                                        context.source.playerOrException,
+                                    )
+                                },
+                        ).then(
+                            Commands
+                                .literal(
+                                    "swap",
+                                ).executes { context ->
+                                    swapProgression(
+                                        context.source.playerOrException,
+                                    )
+                                },
+                        ),
+                ).then(
+                    Commands
+                        .literal(
+                            "region",
+                        ).executes { context ->
                             showRegion(
                                 context.source.playerOrException,
                             )
                         }.then(
                             Commands
-                                .literal("spawn")
-                                .executes { context ->
+                                .literal(
+                                    "spawn",
+                                ).executes { context ->
                                     showSpawn(
                                         context.source.playerOrException,
                                     )
                                 },
                         ).then(
                             Commands
-                                .literal("testspiral")
-                                .executes { context ->
+                                .literal(
+                                    "testspiral",
+                                ).executes { context ->
                                     testSpiral(
                                         context.source.playerOrException,
                                     )
@@ -74,15 +108,121 @@ object DreamCommands {
                 player.blockPosition(),
             )
 
-        return if (success) 1 else 0
-    }
-
-    private fun exitDream(player: ServerPlayer): Int =
-        if (DreamService.wakeFromDream(player)) {
+        return if (success) {
             1
         } else {
             0
         }
+    }
+
+    private fun exitDream(player: ServerPlayer): Int =
+        if (
+            DreamService.wakeFromDream(
+                player,
+            )
+        ) {
+            1
+        } else {
+            0
+        }
+
+    private fun showProgressionStatus(player: ServerPlayer): Int {
+        var found =
+            false
+
+        DreamProgressionCapability
+            .get(
+                player,
+            ).ifPresent { progressionData ->
+                found =
+                    true
+
+                player.sendSystemMessage(
+                    Component.literal(
+                        "Active progression: " +
+                            progressionData.activeRealm.serializedName,
+                    ),
+                )
+
+                player.sendSystemMessage(
+                    Component.literal(
+                        "Inactive state stored: " +
+                            progressionData.hasInactiveState(),
+                    ),
+                )
+            }
+
+        if (!found) {
+            player.sendSystemMessage(
+                Component.literal(
+                    "Dream progression capability is unavailable.",
+                ),
+            )
+
+            return 0
+        }
+
+        return 1
+    }
+
+    private fun swapProgression(player: ServerPlayer): Int {
+        var activeRealm: DreamProgressionRealm? =
+            null
+
+        DreamProgressionCapability
+            .get(
+                player,
+            ).ifPresent { progressionData ->
+                activeRealm =
+                    progressionData.activeRealm
+            }
+
+        val currentRealm =
+            activeRealm
+                ?: run {
+                    player.sendSystemMessage(
+                        Component.literal(
+                            "Dream progression capability is unavailable.",
+                        ),
+                    )
+
+                    return 0
+                }
+
+        val targetRealm =
+            when (currentRealm) {
+                DreamProgressionRealm.WAKING -> {
+                    DreamProgressionRealm.DREAM
+                }
+
+                DreamProgressionRealm.DREAM -> {
+                    DreamProgressionRealm.WAKING
+                }
+            }
+
+        val success =
+            DreamProgressionService.swapTo(
+                player,
+                targetRealm,
+            )
+
+        player.sendSystemMessage(
+            Component.literal(
+                if (success) {
+                    "Active progression: " +
+                        targetRealm.serializedName
+                } else {
+                    "Progression swap failed. Check the server log."
+                },
+            ),
+        )
+
+        return if (success) {
+            1
+        } else {
+            0
+        }
+    }
 
     private fun showRegion(player: ServerPlayer): Int {
         val dreamLevel =
@@ -99,10 +239,6 @@ object DreamCommands {
                     return 0
                 }
 
-        val worldData =
-            DreamWorldSavedData.get(
-                dreamLevel,
-            )
         val region =
             DreamRegionService.getOrCreateRegion(
                 player,
@@ -170,10 +306,10 @@ object DreamCommands {
                     return 0
                 }
 
-    /*
-     * This either returns the player's already-persisted spawn
-     * or finds and permanently stores one for the first time.
-     */
+        /*
+         * This either returns the player's already-persisted spawn
+         * or finds and permanently stores one for the first time.
+         */
         val spawnPos =
             DreamRegionService.getOrCreateSpawn(
                 player,

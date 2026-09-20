@@ -6,10 +6,12 @@ import dev.yen.dream.event.DreamBorderHandler
 import dev.yen.dream.event.DreamRegionInteractionHandler
 import dev.yen.dream.event.DreamSessionPersistenceHandler
 import dev.yen.dream.event.DreamSleepHandler
+import dev.yen.dream.progression.DreamProgressionEvents
 import dev.yen.dream.registry.DreamBlockEntities
 import dev.yen.dream.registry.DreamBlocks
 import dev.yen.dream.registry.DreamItems
 import dev.yen.dream.session.DreamSessionTicker
+import net.minecraft.world.entity.Entity
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.fml.DistExecutor
@@ -30,6 +32,10 @@ object Dream {
         val modEventBus =
             MOD_CONTEXT.getKEventBus()
 
+        modEventBus.addListener(
+            DreamProgressionEvents::onRegisterCapabilities,
+        )
+
         DreamBlocks.register(
             modEventBus,
         )
@@ -44,6 +50,15 @@ object Dream {
 
         logger.info(
             "Entering the dream...",
+        )
+
+        MinecraftForge.EVENT_BUS.addGenericListener(
+            Entity::class.java,
+            DreamProgressionEvents::onAttachCapabilities,
+        )
+
+        MinecraftForge.EVENT_BUS.register(
+            DreamProgressionEvents,
         )
 
         MinecraftForge.EVENT_BUS.register(
