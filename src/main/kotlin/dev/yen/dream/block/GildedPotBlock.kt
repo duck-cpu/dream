@@ -1,16 +1,27 @@
 package dev.yen.dream.block
 
+import dev.yen.dream.block.entity.GildedPotBlockEntity
 import net.minecraft.core.BlockPos
+import net.minecraft.world.Container
+import net.minecraft.world.Containers
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.level.BlockGetter
-import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.BaseEntityBlock
+import net.minecraft.world.level.block.RenderShape
+import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 
 class GildedPotBlock(
     properties: Properties,
-) : Block(properties) {
+) : BaseEntityBlock(properties) {
 
     /*
      * Collision/selection geometry matching the final Blockbench model.
@@ -141,4 +152,113 @@ class GildedPotBlock(
         context: CollisionContext,
     ): VoxelShape =
         potShape
+
+        /**
+     * Create the persistent storage object associated with this
+     * particular placed Gilded Pot.
+     */
+    override fun newBlockEntity(
+        pos: BlockPos,
+        state: BlockState,
+    ): BlockEntity =
+        GildedPotBlockEntity(
+            pos,
+            state,
+        )
+
+    /**
+     * Open the Gilded Pot inventory when the player right-clicks it.
+     */
+    override fun use(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hitResult: BlockHitResult,
+    ): InteractionResult {
+        if (!level.isClientSide) {
+            val blockEntity =
+                level.getBlockEntity(
+                    pos,
+                )
+
+            if (blockEntity is GildedPotBlockEntity) {
+                player.openMenu(
+                    blockEntity,
+                )
+            }
+        }
+
+        return InteractionResult.sidedSuccess(
+            level.isClientSide,
+        )
+    }
+
+    /**
+     * Drop the inventory contents when the block itself is removed.
+     *
+     * The pot item continues to come from the existing block loot table.
+     */
+    override fun onRemove(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        newState: BlockState,
+        isMoving: Boolean,
+    ) {
+        if (!state.`is`(newState.block)) {
+            val blockEntity =
+                level.getBlockEntity(
+                    pos,
+                )
+
+            if (blockEntity is Container) {
+                Containers.dropContents(
+                    level,
+                    pos,
+                    blockEntity,
+                )
+
+                level.updateNeighbourForOutputSignal(
+                    pos,
+                    this,
+                )
+            }
+
+            super.onRemove(
+                state,
+                level,
+                pos,
+                newState,
+                isMoving,
+            )
+        }
+    }
+
+    /**
+     * BaseEntityBlock is invisible by default, so explicitly retain
+     * the Gilded Pot's existing block model.
+     */
+    override fun getRenderShape(
+        state: BlockState,
+    ): RenderShape =
+        RenderShape.MODEL
+
+    /**
+     * Allow comparators to measure how full the pot is.
+     */
+    override fun hasAnalogOutputSignal(
+        state: BlockState,
+    ): Boolean =
+        true
+
+    override fun getAnalogOutputSignal(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+    ): Int =
+        AbstractContainerMenu.getRedstoneSignalFromBlockEntity(
+            level.getBlockEntity(pos),
+        )
 }

@@ -1,3 +1,4 @@
+```text
 DREAM MOD DEVELOPMENT PLAN
 ==========================
 
@@ -211,11 +212,10 @@ Completed
 
 SPRINT 4 — PERSONAL DREAM WORLD + GILDED POT
 =============================================
-STATUS: IN PROGRESS
+STATUS: COMPLETE
 
-Sprint 4 is not complete until every remaining unchecked item in this section
-is either completed or explicitly moved to a later sprint with a documented
-reason.
+Sprint 4 was completed after the personal Dream region systems, Gilded Pot
+storage, and the final multiplayer/regression pass were verified.
 
 
 PART 1 — PERSONAL DREAM REGIONS
@@ -310,7 +310,7 @@ Personal Dream Spawn
 [x] Unsafe center receives a temporary minimal 3 x 3 stone platform.
 [x] Player feet/head space is cleared above the fallback platform.
 [x] Ocean-center Player A case can enter Dream with the fallback.
-[ ] Verify the newly created fallback spawn survives a full server restart.
+[x] Newly created fallback spawn survives a full server restart.
 
 Current spawn rule:
 
@@ -413,7 +413,7 @@ Persistence / Multiplayer Validation
 [x] Players cannot break/place/use blocks in another player's region.
 [x] Each player's DreamSession remains independent.
 [x] Region assignments remain identical after restart.
-[ ] Verify the new ocean/platform fallback spawn after full restart.
+[x] New ocean/platform fallback spawn survives full restart.
 
 Debug / Validation Commands
 ---------------------------
@@ -445,28 +445,28 @@ Current Final Presentation
 [x] Final model was regression-tested with Dream entry.
 [x] Gilded Pot does not change vanilla sleep validation.
 
-Remaining Gilded Pot Work
+Completed Gilded Pot Work
 -------------------------
-[ ] Create dedicated GildedPotBlock class.
-[ ] Define custom collision/selection shape matching the final model.
-[ ] Add decorated-pot-style placement sound.
-[ ] Add decorated-pot-style break sound.
-[ ] Define final breaking behavior.
-[ ] Define final item drops.
-[ ] Add storage functionality.
-[ ] Decide storage capacity.
-[ ] Define behavior for stored contents when the pot is broken.
+[x] Create dedicated GildedPotBlock class.
+[x] Define custom collision/selection shape matching the final model.
+[x] Add decorated-pot-style placement sound.
+[x] Add decorated-pot-style break sound.
+[x] Define final breaking behavior.
+[x] Define final item drops.
+[x] Add storage functionality.
+[x] Storage capacity is one row / 9 slots.
+[x] Stored contents drop separately when the pot is broken.
 
 Sprint 4 Completion Gate
 ------------------------
-Sprint 4 is complete only when:
+Sprint 4 is complete because:
 
 [x] New ocean/platform fallback spawn survives full restart.
-[ ] Gilded Pot custom collision/selection shape is implemented.
-[ ] Gilded Pot sounds are implemented.
-[ ] Gilded Pot break/drop behavior is implemented.
-[ ] Gilded Pot storage behavior is implemented.
-[ ] Final Sprint 4 multiplayer/regression pass succeeds.
+[x] Gilded Pot custom collision/selection shape is implemented.
+[x] Gilded Pot sounds are implemented.
+[x] Gilded Pot break/drop behavior is implemented.
+[x] Gilded Pot storage behavior is implemented.
+[x] Final Sprint 4 multiplayer/regression pass succeeds.
 
 
 KNOWN ISSUES / TECHNICAL DEBT
@@ -518,7 +518,7 @@ Persistence Edge Cases
 
 Repository Cleanup
 ------------------
-[ ] Fix assets/dream/lang/en_us.json if it still contains multiple root objects.
+[x] Fix assets/dream/lang/en_us.json so it contains one valid root object.
 [ ] Remove obsolete dream_anchor resources after confirming no compatibility need.
 [ ] Rename DreamRegionAllocater.kt to DreamRegionAllocator.kt.
 [ ] Align DreamRegionInteractionHandler.kt filesystem path with its declared package.
@@ -529,6 +529,48 @@ Repository Cleanup
 
 FUTURE DESIGN CONSIDERATIONS
 ============================
+
+Gilded Pot-Linked Dream Sessions
+--------------------------------
+Shared prerequisite for pot durability and pot-content Dream modifiers:
+
+[ ] Store the activating Gilded Pot dimension and BlockPos in DreamSession.
+[ ] Persist the activating pot reference across Save & Quit / server restart.
+[ ] Define behavior if the activating pot is moved or destroyed mid-Dream.
+
+Dream Death / Gilded Pot Durability
+-----------------------------------
+Concept credits:
+    Squiggs — repeated Dream deaths progressively crack the Gilded Pot.
+    Armpie — repair a damaged pot in an anvil using gold ingots.
+
+[ ] On death inside dream:dream, damage the pot that began the Dream.
+[ ] Add progressive visual crack stages across repeated Dream deaths.
+[ ] Decide how many Dream deaths advance each stage.
+[ ] Fully cracked Gilded Pot can no longer activate Dream entry.
+[ ] Preserve stored contents across cracking and repair state changes.
+[ ] Add anvil repair using gold ingots.
+[ ] Decide gold cost per repaired crack stage.
+[ ] Restore a fully cracked pot to a usable Gilded Pot after repair.
+
+Gilded Pot Contents / Dream Modifiers
+-------------------------------------
+Concept:
+    Items stored inside the Gilded Pot may alter features of the Dream
+    experience activated by that pot.
+
+[ ] Decide whether stored-item effects modify the player's permanent
+    25 x 25-chunk personal Dream region, a future procedural dungeon, or both.
+[ ] Define which stored items produce Dream modifiers.
+[ ] Decide whether modifier items are consumed as offerings or retained as
+    reusable catalysts.
+[ ] Decide whether pot contents are captured when Dream entry begins or
+    checked continuously during the Dream.
+[ ] Define how multiple modifier items combine and how conflicts are resolved.
+[ ] Decide whether the resolved modifier set must also be stored in
+    DreamSession for restart-safe and move-safe behavior.
+[ ] Ensure modifier behavior cannot affect another player's personal region
+    without explicit future permission mechanics.
 
 Same-Night Dream Re-entry
 -------------------------
@@ -642,13 +684,12 @@ Current border rendering:
 Current activation block:
     dream:gilded_pot
     3-block activation radius
+    one-row / 9-slot persistent storage
+    stored contents drop separately when broken
     vanilla sleep validation remains authoritative
 
-Current major unfinished Sprint 4 work:
-    fallback-spawn restart regression
-    Gilded Pot collision
-    Gilded Pot sounds
-    Gilded Pot break/drop semantics
-    Gilded Pot storage
-    final Sprint 4 regression pass
+Current development status:
+    Sprint 4 complete
+    Sprint 5 not started
+```
 
