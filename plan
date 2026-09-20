@@ -524,7 +524,7 @@ Repository Cleanup
 [ ] Align DreamRegionInteractionHandler.kt filesystem path with its declared package.
 [ ] Remove temporary spawn debug println statements after regression testing.
 [ ] Add permissions to debug commands before any public-server release.
-[ ] Update README after Sprint 4 is formally complete.
+[x] Update README after Sprint 4 is formally complete.
 
 
 FUTURE DESIGN CONSIDERATIONS
@@ -628,14 +628,14 @@ SPRINT 5 — NOT STARTED
 ======================
 Planned first tooling task after Sprint 4:
 ------------------------------------------
-[ ] Add a Dream region map/debug item.
-[ ] Creative/command-only initially.
-[ ] Print a local ASCII allocation map.
-[ ] "." = unallocated region.
-[ ] "O" = allocated region.
-[ ] "X" = current player's region.
-[ ] Include current grid coordinate.
-[ ] Later consider player-name / UUID lookup.
+[x] Add a Dream region map/debug item.
+[x] Creative/command-only initially.
+[x] Print a local ASCII allocation map.
+[x] "." = unallocated region.
+[x] "O" = allocated region.
+[x] "X" = current player's region.
+[x] Include current grid coordinate.
+[x] Later consider player-name / UUID lookup.
 
 Potential Sprint 5 gameplay direction:
 --------------------------------------

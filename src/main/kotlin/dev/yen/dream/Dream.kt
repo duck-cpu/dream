@@ -8,6 +8,7 @@ import dev.yen.dream.event.DreamSessionPersistenceHandler
 import dev.yen.dream.event.DreamSleepHandler
 import dev.yen.dream.registry.DreamBlockEntities
 import dev.yen.dream.registry.DreamBlocks
+import dev.yen.dream.registry.DreamItems
 import dev.yen.dream.session.DreamSessionTicker
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.common.MinecraftForge
@@ -30,6 +31,10 @@ object Dream {
             MOD_CONTEXT.getKEventBus()
 
         DreamBlocks.register(
+            modEventBus,
+        )
+
+        DreamItems.register(
             modEventBus,
         )
 

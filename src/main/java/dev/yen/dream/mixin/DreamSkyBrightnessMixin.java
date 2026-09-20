@@ -12,8 +12,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Level.class)
 public abstract class DreamSkyBrightnessMixin {
 
-    @Shadow
-    private int skyDarken;
+    /*
+    * MixinGradle is not including this shadowed field in the generated
+    * production mappings. The alias allows the mixin to find the same
+    * field in a normal Forge 1.20.1 installation.
+    *
+    * Development name: skyDarken
+    * Forge runtime name: f_46425_
+    */
+    @Shadow(aliases = {"f_46425_"})
+    private int skyDarken;    
 
     @Inject(
         method = "updateSkyBrightness",
