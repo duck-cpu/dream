@@ -1,4 +1,3 @@
-```text
 DREAM MOD DEVELOPMENT PLAN
 ==========================
 
@@ -470,14 +469,22 @@ Sprint 4 is complete because:
 
 
 KNOWN ISSUES / TECHNICAL DEBT
-=============================
+============================
 
 Player Death
 ------------
-[ ] Define player death behavior while Dreaming.
-[ ] Prevent stale DreamSession after death.
-[ ] Define respawn behavior after death in dream:dream.
-[ ] Decide Dream inventory/progression loss semantics.
+[x] Design decision: death inside dream:dream ends the active Dream.
+[x] Design decision: pressing Respawn returns the player to the Dream's
+    originating dimension/bed rather than respawning inside dream:dream.
+[x] Design decision: vanilla keepInventory remains authoritative for the
+    Dream-side inventory and Dream-side item drops.
+[ ] Implement Dream death detection.
+[ ] Clear the DreamSession safely during the death/respawn lifecycle.
+[ ] Restore the player's Overworld progression state after respawn.
+[ ] Ensure Dream-side drops remain in dream:dream when keepInventory=false.
+[ ] Regression-test death with keepInventory=false.
+[ ] Regression-test death with keepInventory=true.
+[ ] Regression-test death after Save & Quit / full server restart.
 
 Return Position
 ---------------
@@ -512,6 +519,8 @@ Persistence Edge Cases
 ----------------------
 [ ] Corrupted DreamSession recovery.
 [ ] Corrupted DreamWorldSavedData recovery.
+[ ] Corrupted/missing separated progression-state recovery.
+[ ] Interrupted inventory swap recovery without duplication or item loss.
 [ ] Missing origin dimension behavior.
 [ ] Missing Dream dimension behavior.
 [ ] Missing personal region recovery.
@@ -519,12 +528,15 @@ Persistence Edge Cases
 Repository Cleanup
 ------------------
 [x] Fix assets/dream/lang/en_us.json so it contains one valid root object.
+[x] Fix DreamSkyBrightnessMixin production runtime field lookup.
+[x] Verify the reobfuscated JAR loads in an external Forge 47.4.10 client.
+[x] Verify the external client can exercise existing Dream features.
 [ ] Remove obsolete dream_anchor resources after confirming no compatibility need.
 [ ] Rename DreamRegionAllocater.kt to DreamRegionAllocator.kt.
 [ ] Align DreamRegionInteractionHandler.kt filesystem path with its declared package.
 [ ] Remove temporary spawn debug println statements after regression testing.
 [ ] Add permissions to debug commands before any public-server release.
-[x] Update README after Sprint 4 is formally complete.
+[x] Update README after Sprint 4 completion.
 
 
 FUTURE DESIGN CONSIDERATIONS
@@ -624,28 +636,145 @@ Potential future work:
 [ ] Apotheosis integration.
 
 
-SPRINT 5 — NOT STARTED
-======================
-Planned first tooling task after Sprint 4:
-------------------------------------------
-[x] Add a Dream region map/debug item.
-[x] Creative/command-only initially.
-[x] Print a local ASCII allocation map.
-[x] "." = unallocated region.
-[x] "O" = allocated region.
-[x] "X" = current player's region.
-[x] Include current grid coordinate.
-[x] Later consider player-name / UUID lookup.
+SPRINT 5 — DREAM PROGRESSION SEPARATION + DEATH HARDENING
+=========================================================
+STATUS: IN PROGRESS
 
-Potential Sprint 5 gameplay direction:
---------------------------------------
+Goal
+----
+Establish the Dream as a genuinely separate persistent progression while
+hardening the lifecycle around death, logout, restart, and state restoration.
+
+PART 1 — REGION MAP / DEBUG TOOL
+================================
+
+Completed
+---------
+[x] Add DreamRegionMapFormatter.
+[x] Add reusable dream:dream_region_map item.
+[x] Keep the item creative/command-only for development.
+[x] Print a local 9 x 9 ASCII allocation map in chat.
+[x] Use "." for an unallocated region.
+[x] Use "O" for another allocated region.
+[x] Use "X" for the current player's region.
+[x] Include the current player's grid coordinate.
+[x] Print north / negative Z orientation.
+[x] Read authoritative server-side DreamWorldSavedData.
+[x] Do not allocate or modify regions when the map is used.
+[x] Verify the tool from both the Overworld and dream:dream.
+[x] Verify adjacent multiplayer allocations appear correctly.
+
+Future Debug Improvements
+-------------------------
+[ ] Improve fixed-width/aligned visual presentation if it becomes player-facing.
+[ ] Add player-name / UUID lookup.
+[ ] Consider configurable map radius.
+
+
+PART 2 — SEPARATE OVERWORLD AND DREAM PROGRESSION
+=================================================
+
+Accepted Design Boundary
+------------------------
+The player has two independent persistent gameplay states:
+
+    waking state / non-Dream dimensions
+    Dream state / dream:dream
+
+The following state must be separated:
+
+[x] Design decision: main inventory and hotbar.
+[x] Design decision: armor slots.
+[x] Design decision: offhand slot.
+[x] Design decision: selected hotbar slot.
+[x] Design decision: Ender Chest contents.
+[x] Design decision: experience level, total, and progress.
+[x] Design decision: health and absorption.
+[x] Design decision: hunger, saturation, and exhaustion.
+[x] Design decision: active potion/status effects.
+
+The following state remains shared:
+
+[x] Design decision: advancements.
+[x] Design decision: statistics.
+[x] Design decision: unlocked recipes.
+[x] Design decision: game mode.
+[x] Design decision: permanent Dream-region ownership.
+
+Implementation
+--------------
+[ ] Define a versioned serializable progression-state model.
+[ ] Persist one waking-state snapshot per player UUID.
+[ ] Persist one Dream-state snapshot per player UUID.
+[ ] On Dream entry, save waking state before loading Dream state.
+[ ] On normal wake, save Dream state before restoring waking state.
+[ ] Initialize a first-time Dream state without copying waking resources.
+[ ] Close or safely resolve open containers before every state swap.
+[ ] Prevent carried cursor stacks or crafting-grid items from crossing states.
+[ ] Recalculate equipment/attribute effects after loading a state.
+[ ] Synchronize all restored state to the client.
+[ ] Keep all authoritative swapping on the server.
+[ ] Make swaps transactional/idempotent enough to prevent duplication or loss
+    if logout, shutdown, or failure occurs during a transition.
+[ ] Define safe recovery when only one side of a transition was persisted.
+[ ] Document compatibility limits for inventories/capabilities added by other mods.
+
+Progression Separation Validation
+---------------------------------
+[ ] Items cannot move from waking progression into Dream progression.
+[ ] Items cannot move from Dream progression into waking progression.
+[ ] Armor and offhand remain isolated.
+[ ] Ender Chest contents remain isolated.
+[ ] XP remains isolated in both directions.
+[ ] Health/hunger/effects restore independently.
+[ ] Repeated entry and exit do not duplicate or delete state.
+[ ] /dream enter and /dream exit use the same swap lifecycle as bed entry/wake.
+[ ] Save & Quit inside Dream restores the correct Dream state on reconnect.
+[ ] Full server restart inside Dream restores the correct Dream state.
+[ ] Multiplayer players retain independent paired states.
+
+
+PART 3 — DREAM DEATH LIFECYCLE
+==============================
+
+Accepted Behavior
+-----------------
+[x] Design decision: dying in dream:dream ends the active Dream.
+[x] Design decision: the player wakes only after pressing Respawn.
+[x] Design decision: respawn returns to the stored origin dimension/bed.
+[x] Design decision: the stale DreamSession must be cleared.
+[x] Design decision: vanilla keepInventory controls Dream inventory loss.
+[x] Design decision: with keepInventory=false, Dream-side items drop in
+    dream:dream and the waking inventory is restored after respawn.
+[x] Design decision: with keepInventory=true, Dream-side progression survives
+    and the waking inventory is restored after respawn.
+
+Implementation / Validation
+---------------------------
+[ ] Hook the server-side death/clone/respawn lifecycle safely.
+[ ] Preserve enough origin/session data through the clone event to wake correctly.
+[ ] Prevent vanilla respawn from leaving the player in dream:dream.
+[ ] Restore waking progression exactly once.
+[ ] Clear the DreamSession exactly once.
+[ ] Ensure no Dream item can appear in the restored waking inventory.
+[ ] Ensure no waking item is included in Dream death drops.
+[ ] Verify Dream drops remain recoverable on a later Dream entry.
+[ ] Verify death with keepInventory=false.
+[ ] Verify death with keepInventory=true.
+[ ] Verify death followed by logout/reconnect.
+[ ] Verify death after a full server restart.
+[ ] Verify two players can die/respawn independently.
+[ ] Preserve a future hook for Gilded Pot cracking.
+
+
+LATER SPRINT 5 DIRECTION
+========================
 [ ] Personal-region hardening.
 [ ] Persistent-building gameplay.
 [ ] Dream-specific materials.
 [ ] Dream/Overworld progression hooks.
 [ ] Resource balance.
 [ ] Safer spawn recovery.
-[ ] Player death behavior.
 [ ] Revisit ocean/resource-starved Dream generation policy.
 
 
@@ -688,8 +817,22 @@ Current activation block:
     stored contents drop separately when broken
     vanilla sleep validation remains authoritative
 
+Current debug map:
+    dream:dream_region_map
+    command-only development item
+    local 9 x 9 ASCII allocation view
+    server-side read-only SavedData access
+
+Current progression behavior:
+    inventories and player progression are still shared
+    separate waking/Dream progression is accepted design but not implemented
+
+Current death behavior:
+    Dream-specific death/wake handling is accepted design but not implemented
+
 Current development status:
     Sprint 4 complete
-    Sprint 5 not started
-```
-
+    Sprint 5 in progress
+    region debug map complete
+    progression separation next
+    Dream death lifecycle follows progression separation
